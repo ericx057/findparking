@@ -43,6 +43,13 @@ class CameraSignal(BaseSignal):
         if capacity <= 0:
             return None
 
+        # No vehicle event history means occupancy=0 is the seeded default, not observed empty
+        event_count = conn.execute(
+            "SELECT COUNT(*) FROM vehicle_events WHERE lot_id = ?", (lot_id,)
+        ).fetchone()[0]
+        if event_count == 0:
+            return None
+
         vacancy_ratio = compute_vacancy_ratio(capacity, occupancy)
 
         # Compute staleness from last_updated

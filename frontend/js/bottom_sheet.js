@@ -100,6 +100,7 @@ var BottomSheet = (function () {
         if (!lot.signals_used || lot.signals_used.length === 0) return '--';
         var labels = {
             'camera': 'CAM',
+            'heuristic_baseline': 'EST',
             'sports_event': 'EVENT',
             'weather': 'WX',
             'time_weights': 'TIME',

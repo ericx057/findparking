@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from backend.signals import SignalResult
 from backend.signals.camera import CameraSignal
 from backend.signals.events_sports import SportsEventSignal
+from backend.signals.heuristic_baseline import HeuristicBaselineSignal
 from backend.signals.road_disruptions import RoadDisruptionsSignal
 from backend.signals.time_weights import TimeWeightsSignal
 from backend.signals.weather import WeatherSignal
@@ -23,6 +24,7 @@ class BlendedEstimate:
 # Registry of all signal instances, evaluated in order
 _SIGNALS = [
     CameraSignal(),
+    HeuristicBaselineSignal(),
     SportsEventSignal(),
     TimeWeightsSignal(),
     WeatherSignal(),
