@@ -24,20 +24,54 @@ def get_lots_nearby(
     lon: float,
     radius_km: float = 2.0,
     limit: int = 10,
+    fare_type: str | None = None,
+    max_hourly_rate: float | None = None,
+    is_covered: bool | None = None,
+    is_multi_level: bool | None = None,
+    is_above_ground: bool | None = None,
 ) -> list[dict]:
     """Return lots within radius_km of (lat, lon), sorted by distance.
 
     Uses a bounding-box SQL pre-filter then exact Haversine in Python.
     Each returned dict includes all lot columns plus 'distance_km'.
+    Optional filters applied at the SQL level.
     """
     lat_margin = radius_km / 111.0
     lon_margin = radius_km / (111.0 * max(math.cos(math.radians(lat)), 0.01))
 
+    conditions = [
+        "latitude BETWEEN ? AND ?",
+        "longitude BETWEEN ? AND ?",
+    ]
+    params: list = [
+        lat - lat_margin, lat + lat_margin,
+        lon - lon_margin, lon + lon_margin,
+    ]
+
+    if fare_type is not None:
+        conditions.append("fare_type = ?")
+        params.append(fare_type)
+
+    if max_hourly_rate is not None:
+        conditions.append("(hourly_rate IS NULL OR hourly_rate <= ?)")
+        params.append(max_hourly_rate)
+
+    if is_covered is not None:
+        conditions.append("is_covered = ?")
+        params.append(1 if is_covered else 0)
+
+    if is_multi_level is not None:
+        conditions.append("is_multi_level = ?")
+        params.append(1 if is_multi_level else 0)
+
+    if is_above_ground is not None:
+        conditions.append("is_above_ground = ?")
+        params.append(1 if is_above_ground else 0)
+
+    where_clause = " AND ".join(conditions)
     rows = conn.execute(
-        "SELECT * FROM parking_lots "
-        "WHERE latitude BETWEEN ? AND ? "
-        "AND longitude BETWEEN ? AND ?",
-        (lat - lat_margin, lat + lat_margin, lon - lon_margin, lon + lon_margin),
+        f"SELECT * FROM parking_lots WHERE {where_clause}",
+        params,
     ).fetchall()
 
     results = []

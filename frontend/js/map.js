@@ -55,7 +55,10 @@ var ParkingMap = (function () {
         return lot.availability || 'stale';
     }
 
-    function getPinColor(availability) {
+    function getPinColor(lot) {
+        if (lot.pin_color) return lot.pin_color;
+        // Fallback to discrete colors
+        var availability = getAvailability(lot);
         return PIN_COLORS[availability] || PIN_COLORS.stale;
     }
 
@@ -64,8 +67,7 @@ var ParkingMap = (function () {
 
         lots.forEach(function (lot) {
             currentIds[lot.lot_id] = true;
-            var availability = getAvailability(lot);
-            var color = getPinColor(availability);
+            var color = getPinColor(lot);
 
             if (markers[lot.lot_id]) {
                 markers[lot.lot_id].setStyle({
@@ -160,6 +162,12 @@ var ParkingMap = (function () {
         }
     }
 
+    function updateRadius(radiusKm) {
+        if (userCircle) {
+            userCircle.setRadius(radiusKm * 1000);
+        }
+    }
+
     return {
         initMap: initMap,
         setView: setView,
@@ -168,6 +176,7 @@ var ParkingMap = (function () {
         getMap: getMap,
         setUserLocation: setUserLocation,
         clearUserLocation: clearUserLocation,
-        enableMapClick: enableMapClick
+        enableMapClick: enableMapClick,
+        updateRadius: updateRadius
     };
 })();

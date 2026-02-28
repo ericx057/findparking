@@ -21,7 +21,12 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
             last_updated TEXT NOT NULL DEFAULT (datetime('now')),
             camera_source_url TEXT,
             tripwire_config TEXT,
-            city TEXT NOT NULL DEFAULT 'waterloo'
+            city TEXT NOT NULL DEFAULT 'waterloo',
+            fare_type TEXT NOT NULL DEFAULT 'paid',
+            hourly_rate REAL,
+            is_covered INTEGER NOT NULL DEFAULT 0,
+            is_multi_level INTEGER NOT NULL DEFAULT 0,
+            is_above_ground INTEGER NOT NULL DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS vehicle_events (

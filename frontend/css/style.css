@@ -23,7 +23,7 @@
     --font-data: 'DM Mono', monospace;
     --font-body: 'Archivo', sans-serif;
 
-    --sheet-height: 340px;
+    --sheet-height: 420px;
     --header-height: 44px;
 
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -572,4 +572,223 @@ html, body {
     .header-title {
         display: none;
     }
+
+    .filter-panel {
+        padding: 10px 12px;
+    }
+}
+
+/* ---- Filter Panel ---- */
+
+.filter-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.filter-toggle:hover,
+.filter-toggle.active {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.filter-panel {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s var(--ease-out-expo), opacity 0.2s ease, padding 0.3s ease;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.filter-panel.open {
+    max-height: 120px;
+    opacity: 1;
+    padding: 12px 16px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-label {
+    font-family: var(--font-data);
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+.filter-slider {
+    width: 80px;
+    height: 3px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.filter-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    cursor: pointer;
+}
+
+.filter-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    cursor: pointer;
+    border: none;
+}
+
+.filter-range-label {
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.filter-select {
+    font-family: var(--font-data);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.filter-select:focus {
+    border-color: var(--accent-green);
+}
+
+.filter-select option {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+.filter-number-input {
+    font-family: var(--font-data);
+    font-size: 10px;
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 3px 6px;
+    width: 52px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.filter-number-input::placeholder {
+    color: var(--text-dim);
+}
+
+.filter-number-input:focus {
+    border-color: var(--accent-green);
+}
+
+.filter-toggles {
+    gap: 10px;
+}
+
+.filter-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.filter-toggle-label input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--bg-input);
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.filter-toggle-label input[type="checkbox"]:checked {
+    border-color: var(--accent-green);
+    background: var(--accent-green);
+}
+
+.filter-toggle-label input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    width: 5px;
+    height: 8px;
+    border: solid var(--bg-primary);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.toggle-text {
+    font-family: var(--font-data);
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.filter-reset-btn {
+    font-family: var(--font-data);
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.filter-reset-btn:hover {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
 }

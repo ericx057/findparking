@@ -4,10 +4,12 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from backend.parking_lot_repository import get_all_lots, get_lot, get_lots_by_city, get_lots_nearby
+from backend.prediction import get_historical_prediction
 from backend.probability_engine import (
     classify_availability,
     compute_spot_probability,
     compute_vacancy_ratio,
+    pin_color_from_probability,
 )
 from backend.vehicle_event_store import get_recent_event_count
 
@@ -67,6 +69,13 @@ def _compute_lot_response(lot, conn) -> dict:
         elif recent < older:
             trend = "emptying"
 
+    # Pin color from continuous gradient
+    pin_color = pin_color_from_probability(probability_score)
+
+    # Historical prediction for current hour
+    current_hour = datetime.now(timezone.utc).hour
+    predicted_probability = get_historical_prediction(conn, lot["lot_id"], current_hour)
+
     return {
         "lot_id": lot["lot_id"],
         "name": lot["name"],
@@ -77,10 +86,17 @@ def _compute_lot_response(lot, conn) -> dict:
         "vacancy_ratio": round(vacancy_ratio, 4),
         "probability_score": round(probability_score, 4),
         "availability": availability,
+        "pin_color": pin_color,
+        "predicted_probability": predicted_probability,
         "trend": trend,
         "freshness_seconds": round(freshness_seconds, 1) if freshness_seconds is not None else None,
         "confidence_range": confidence_range,
         "last_updated": lot["last_updated"],
+        "fare_type": lot["fare_type"],
+        "hourly_rate": lot["hourly_rate"],
+        "is_covered": bool(lot["is_covered"]),
+        "is_multi_level": bool(lot["is_multi_level"]),
+        "is_above_ground": bool(lot["is_above_ground"]),
     }
 
 
@@ -101,14 +117,29 @@ def list_lots_nearby(
     lon: float = Query(...),
     radius_km: float = Query(default=2.0),
     limit: int = Query(default=10),
+    fare_type: str | None = Query(default=None),
+    max_hourly_rate: float | None = Query(default=None),
+    is_covered: bool | None = Query(default=None),
+    is_multi_level: bool | None = Query(default=None),
+    is_above_ground: bool | None = Query(default=None),
 ):
     conn = request.app.state.db_conn
-    lots = get_lots_nearby(conn, lat, lon, radius_km=radius_km, limit=limit)
+    lots = get_lots_nearby(
+        conn, lat, lon,
+        radius_km=radius_km,
+        limit=limit,
+        fare_type=fare_type,
+        max_hourly_rate=max_hourly_rate,
+        is_covered=is_covered,
+        is_multi_level=is_multi_level,
+        is_above_ground=is_above_ground,
+    )
     results = []
     for lot in lots:
         distance_km = lot.pop("distance_km")
         response = _compute_lot_response(lot, conn)
         response["distance_km"] = distance_km
+        response["walking_minutes"] = round((distance_km / 5.0) * 60)
         results.append(response)
     return results
 

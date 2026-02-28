@@ -31,3 +31,14 @@ def compute_occupancy_delta(direction: str) -> int:
         return -1
     else:
         raise ValueError(f"Invalid direction: {direction}")
+
+
+def pin_color_from_probability(score: float) -> str:
+    """Interpolate from red at 0.0 to green at 1.0 via HSL hue rotation.
+
+    Returns an HSL color string usable in both CSS and Leaflet.
+    Hue 0 = red, hue 142 = green (matching --accent-green).
+    """
+    clamped = max(0.0, min(1.0, score))
+    hue = int(clamped * 142)
+    return f"hsl({hue}, 72%, 52%)"

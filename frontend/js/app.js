@@ -1,6 +1,5 @@
 (function () {
     var POLL_INTERVAL_MS = 30000;
-    var SEARCH_RADIUS_KM = 2.0;
     var SEARCH_LIMIT = 10;
     var overlay = document.getElementById('loading-overlay');
     var statusEl = document.getElementById('connection-status');
@@ -8,6 +7,8 @@
     var searchInput = document.getElementById('search-input');
     var searchResults = document.getElementById('search-results');
     var geolocateBtn = document.getElementById('geolocate-btn');
+    var filterPanel = document.getElementById('filter-panel');
+    var filterToggle = document.getElementById('filter-toggle');
     var pollTimer = null;
     var lotsCache = {};
     var activeCity = 'waterloo';
@@ -52,9 +53,11 @@
     function pollLots() {
         var fetchPromise;
         if (userLocation) {
+            var filterState = Filters.getState();
+            var radiusKm = filterState.radius_km;
             fetchPromise = ParkingAPI.fetchNearbyLots(
                 userLocation.lat, userLocation.lon,
-                SEARCH_RADIUS_KM, SEARCH_LIMIT
+                radiusKm, SEARCH_LIMIT, filterState
             );
         } else {
             fetchPromise = ParkingAPI.fetchAllLots(activeCity);
@@ -81,8 +84,17 @@
         lotsCache = {};
         BottomSheet.close();
         ParkingMap.clearPins();
-        ParkingMap.setUserLocation(lat, lon, SEARCH_RADIUS_KM);
+        ParkingMap.setUserLocation(lat, lon, Filters.getRadius());
         pollLots();
+    }
+
+    function handleFiltersChanged() {
+        if (userLocation) {
+            lotsCache = {};
+            ParkingMap.clearPins();
+            ParkingMap.updateRadius(Filters.getRadius());
+            pollLots();
+        }
     }
 
     function clearLocationSearch() {
@@ -119,6 +131,11 @@
     }
 
     function init() {
+        // Initialize filters
+        if (filterPanel && filterToggle) {
+            Filters.init(filterPanel, filterToggle, handleFiltersChanged);
+        }
+
         ParkingAPI.fetchConfig()
             .then(function (config) {
                 activeCity = config.active_city || 'waterloo';

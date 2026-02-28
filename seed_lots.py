@@ -10,6 +10,11 @@ LOTS = {
             "latitude": 43.4621,
             "longitude": -80.5241,
             "capacity": 400,
+            "fare_type": "hourly",
+            "hourly_rate": 3.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "uw-lot-c",
@@ -17,6 +22,11 @@ LOTS = {
             "latitude": 43.4723,
             "longitude": -80.5449,
             "capacity": 600,
+            "fare_type": "daily",
+            "hourly_rate": None,
+            "is_covered": 0,
+            "is_multi_level": 0,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "uw-lot-x",
@@ -24,6 +34,11 @@ LOTS = {
             "latitude": 43.4710,
             "longitude": -80.5382,
             "capacity": 350,
+            "fare_type": "daily",
+            "hourly_rate": None,
+            "is_covered": 0,
+            "is_multi_level": 0,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "uptown-garage",
@@ -31,6 +46,11 @@ LOTS = {
             "latitude": 43.4648,
             "longitude": -80.5226,
             "capacity": 500,
+            "fare_type": "hourly",
+            "hourly_rate": 2.5,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "conestoga-mall",
@@ -38,6 +58,11 @@ LOTS = {
             "latitude": 43.4979,
             "longitude": -80.5283,
             "capacity": 2000,
+            "fare_type": "free",
+            "hourly_rate": None,
+            "is_covered": 0,
+            "is_multi_level": 0,
+            "is_above_ground": 1,
         },
     ],
     "toronto": [
@@ -47,6 +72,11 @@ LOTS = {
             "latitude": 43.6453,
             "longitude": -79.3806,
             "capacity": 800,
+            "fare_type": "hourly",
+            "hourly_rate": 8.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 0,
         },
         {
             "lot_id": "tor-eaton-centre",
@@ -54,6 +84,11 @@ LOTS = {
             "latitude": 43.6544,
             "longitude": -79.3807,
             "capacity": 1200,
+            "fare_type": "hourly",
+            "hourly_rate": 6.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "tor-nathan-phillips",
@@ -61,6 +96,11 @@ LOTS = {
             "latitude": 43.6525,
             "longitude": -79.3834,
             "capacity": 600,
+            "fare_type": "hourly",
+            "hourly_rate": 5.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 0,
         },
         {
             "lot_id": "tor-yorkville",
@@ -68,6 +108,11 @@ LOTS = {
             "latitude": 43.6707,
             "longitude": -79.3930,
             "capacity": 500,
+            "fare_type": "hourly",
+            "hourly_rate": 7.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 0,
         },
         {
             "lot_id": "tor-kensington",
@@ -75,6 +120,11 @@ LOTS = {
             "latitude": 43.6547,
             "longitude": -79.4006,
             "capacity": 150,
+            "fare_type": "flat",
+            "hourly_rate": None,
+            "is_covered": 0,
+            "is_multi_level": 0,
+            "is_above_ground": 1,
         },
     ],
     "vancouver": [
@@ -84,6 +134,11 @@ LOTS = {
             "latitude": 49.2838,
             "longitude": -123.1186,
             "capacity": 1000,
+            "fare_type": "hourly",
+            "hourly_rate": 6.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 0,
         },
         {
             "lot_id": "van-robson-square",
@@ -91,6 +146,11 @@ LOTS = {
             "latitude": 49.2827,
             "longitude": -123.1216,
             "capacity": 400,
+            "fare_type": "hourly",
+            "hourly_rate": 5.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 0,
         },
         {
             "lot_id": "van-gastown",
@@ -98,6 +158,11 @@ LOTS = {
             "latitude": 49.2843,
             "longitude": -123.1064,
             "capacity": 300,
+            "fare_type": "hourly",
+            "hourly_rate": 4.0,
+            "is_covered": 1,
+            "is_multi_level": 1,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "van-granville-island",
@@ -105,6 +170,11 @@ LOTS = {
             "latitude": 49.2713,
             "longitude": -123.1340,
             "capacity": 500,
+            "fare_type": "hourly",
+            "hourly_rate": 3.0,
+            "is_covered": 0,
+            "is_multi_level": 0,
+            "is_above_ground": 1,
         },
         {
             "lot_id": "van-stanley-park",
@@ -112,6 +182,11 @@ LOTS = {
             "latitude": 49.2986,
             "longitude": -123.1418,
             "capacity": 600,
+            "fare_type": "free",
+            "hourly_rate": None,
+            "is_covered": 0,
+            "is_multi_level": 0,
+            "is_above_ground": 1,
         },
     ],
 }
@@ -129,10 +204,13 @@ def seed(db_path: str = "findparking.db", city: str | None = None) -> None:
         for lot in lots:
             conn.execute(
                 "INSERT OR REPLACE INTO parking_lots "
-                "(lot_id, name, latitude, longitude, capacity, current_occupancy, city) "
-                "VALUES (?, ?, ?, ?, ?, 0, ?)",
+                "(lot_id, name, latitude, longitude, capacity, current_occupancy, city, "
+                "fare_type, hourly_rate, is_covered, is_multi_level, is_above_ground) "
+                "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)",
                 (lot["lot_id"], lot["name"], lot["latitude"],
-                 lot["longitude"], lot["capacity"], city_key),
+                 lot["longitude"], lot["capacity"], city_key,
+                 lot["fare_type"], lot["hourly_rate"],
+                 lot["is_covered"], lot["is_multi_level"], lot["is_above_ground"]),
             )
             total += 1
 

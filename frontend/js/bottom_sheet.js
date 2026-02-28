@@ -9,6 +9,9 @@ var BottomSheet = (function () {
     var confidence = document.getElementById('sheet-confidence');
     var updated = document.getElementById('sheet-updated');
     var closeBtn = document.getElementById('sheet-close');
+    var fareEl = document.getElementById('sheet-fare');
+    var lotTypeEl = document.getElementById('sheet-lot-type');
+    var predictedEl = document.getElementById('sheet-predicted');
 
     var userPosition = null;
 
@@ -40,6 +43,11 @@ var BottomSheet = (function () {
     }
 
     function computeWalkingEta(lot) {
+        // Prefer server-computed walking_minutes
+        if (lot.walking_minutes != null) {
+            if (lot.walking_minutes < 1) return '< 1 min walk';
+            return '~' + lot.walking_minutes + ' min walk';
+        }
         var km = null;
         if (lot.distance_km != null) {
             km = lot.distance_km;
@@ -66,6 +74,27 @@ var BottomSheet = (function () {
         return mins + 'm ago';
     }
 
+    function formatFareType(lot) {
+        if (!lot.fare_type) return '--';
+        var label = lot.fare_type.toUpperCase();
+        if (lot.fare_type === 'hourly' && lot.hourly_rate != null) {
+            label += ' ($' + lot.hourly_rate.toFixed(2) + '/hr)';
+        }
+        return label;
+    }
+
+    function formatLotType(lot) {
+        var parts = [];
+        if (lot.is_covered) parts.push('Covered');
+        if (lot.is_multi_level) parts.push('Multi-level');
+        if (lot.is_above_ground === false) {
+            parts.push('Underground');
+        } else if (lot.is_above_ground === true) {
+            parts.push('Surface');
+        }
+        return parts.length > 0 ? parts.join(', ') : '--';
+    }
+
     function open(lot) {
         lotName.textContent = lot.name || '--';
 
@@ -90,6 +119,17 @@ var BottomSheet = (function () {
         confidence.textContent = conf ? conf : '--';
 
         updated.textContent = formatUpdated(lot.freshness_seconds);
+
+        // Lot attributes
+        if (fareEl) fareEl.textContent = formatFareType(lot);
+        if (lotTypeEl) lotTypeEl.textContent = formatLotType(lot);
+        if (predictedEl) {
+            if (lot.predicted_probability != null) {
+                predictedEl.textContent = Math.round(lot.predicted_probability * 100) + '%';
+            } else {
+                predictedEl.textContent = 'No data';
+            }
+        }
 
         sheet.classList.remove('hidden');
     }
