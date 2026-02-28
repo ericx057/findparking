@@ -4,10 +4,10 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from backend.parking_lot_repository import get_all_lots, get_lot, get_lots_by_city, get_lots_nearby
+from backend.estimation import compute_blended_score
 from backend.prediction import get_historical_prediction
 from backend.probability_engine import (
     classify_availability,
-    compute_spot_probability,
     compute_vacancy_ratio,
     pin_color_from_probability,
 )
@@ -23,9 +23,12 @@ def _compute_lot_response(lot, conn) -> dict:
 
     vacancy_ratio = compute_vacancy_ratio(capacity, occupancy)
 
-    # For MVP, time weight is hardcoded at 1.0
-    time_weight = 1.0
-    probability_score = compute_spot_probability(vacancy_ratio, time_weight)
+    # Multi-signal blended estimation
+    estimate = compute_blended_score(
+        conn, lot["lot_id"], lot["latitude"], lot["longitude"],
+        lot["city"], capacity, occupancy,
+    )
+    probability_score = estimate.score
     availability = classify_availability(probability_score)
 
     # Freshness: seconds since last update
@@ -97,6 +100,7 @@ def _compute_lot_response(lot, conn) -> dict:
         "is_covered": bool(lot["is_covered"]),
         "is_multi_level": bool(lot["is_multi_level"]),
         "is_above_ground": bool(lot["is_above_ground"]),
+        "signals_used": estimate.signals_used,
     }
 
 

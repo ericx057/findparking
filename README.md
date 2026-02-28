@@ -1,6 +1,6 @@
 # findparking
 
-Probabilistic parking availability predictor for Waterloo, Ontario. Tracks vehicle flow at lot entrances via camera feeds and outputs a real-time "probability of finding a spot" score.
+Probabilistic parking availibility estimator. Intakes mix of different information, inputs into weighted average. The goal for this project is to drop the amount of time required looking for parking spaces. Lets say I want to go to the beach downtown but I'm not sure if I want to bus or drive, I would then reference this to find a probabilistic result on the closest known parking lots.
 
 ## Architecture
 

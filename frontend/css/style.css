@@ -23,7 +23,7 @@
     --font-data: 'DM Mono', monospace;
     --font-body: 'Archivo', sans-serif;
 
-    --sheet-height: 420px;
+    --sheet-height: 450px;
     --header-height: 44px;
 
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);

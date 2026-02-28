@@ -12,6 +12,7 @@ var BottomSheet = (function () {
     var fareEl = document.getElementById('sheet-fare');
     var lotTypeEl = document.getElementById('sheet-lot-type');
     var predictedEl = document.getElementById('sheet-predicted');
+    var signalsEl = document.getElementById('sheet-signals');
 
     var userPosition = null;
 
@@ -95,6 +96,20 @@ var BottomSheet = (function () {
         return parts.length > 0 ? parts.join(', ') : '--';
     }
 
+    function formatSignals(lot) {
+        if (!lot.signals_used || lot.signals_used.length === 0) return '--';
+        var labels = {
+            'camera': 'CAM',
+            'sports_event': 'EVENT',
+            'weather': 'WX',
+            'time_weights': 'TIME',
+            'road_disruptions': 'ROAD',
+        };
+        return lot.signals_used.map(function (s) {
+            return labels[s] || s.toUpperCase();
+        }).join(' + ');
+    }
+
     function open(lot) {
         lotName.textContent = lot.name || '--';
 
@@ -130,6 +145,7 @@ var BottomSheet = (function () {
                 predictedEl.textContent = 'No data';
             }
         }
+        if (signalsEl) signalsEl.textContent = formatSignals(lot);
 
         sheet.classList.remove('hidden');
     }

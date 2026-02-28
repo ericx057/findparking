@@ -63,4 +63,72 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
             assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
             PRIMARY KEY (lot_id, camera_id)
         );
+
+        CREATE TABLE IF NOT EXISTS cached_events (
+            event_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            venue_name TEXT NOT NULL,
+            venue_lat REAL NOT NULL,
+            venue_lon REAL NOT NULL,
+            city TEXT NOT NULL,
+            event_name TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT,
+            expected_attendance INTEGER,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_weather (
+            city TEXT NOT NULL,
+            observed_at TEXT NOT NULL,
+            condition TEXT NOT NULL,
+            temp_celsius REAL,
+            wind_kph REAL,
+            precipitation_mm REAL,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (city, observed_at)
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_road_disruptions (
+            disruption_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            description TEXT,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            radius_km REAL NOT NULL DEFAULT 0.2,
+            severity TEXT NOT NULL DEFAULT 'moderate',
+            start_date TEXT,
+            end_date TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_municipal_occupancy (
+            lot_reference TEXT NOT NULL,
+            city TEXT NOT NULL,
+            mapped_lot_id TEXT,
+            occupancy_pct REAL NOT NULL,
+            observation_period TEXT NOT NULL,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (lot_reference, observation_period)
+        );
+
+        CREATE TABLE IF NOT EXISTS signal_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lot_id TEXT NOT NULL,
+            timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+            signal_source TEXT NOT NULL,
+            raw_value REAL NOT NULL,
+            confidence REAL NOT NULL,
+            weighted_contribution REAL NOT NULL,
+            final_blended_score REAL NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_cached_events_city_time
+            ON cached_events(city, start_time);
+        CREATE INDEX IF NOT EXISTS idx_cached_weather_city_fetched
+            ON cached_weather(city, fetched_at);
+        CREATE INDEX IF NOT EXISTS idx_cached_road_disruptions_city
+            ON cached_road_disruptions(city);
+        CREATE INDEX IF NOT EXISTS idx_signal_audit_lot_time
+            ON signal_audit_log(lot_id, timestamp);
     """)

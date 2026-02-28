@@ -10,6 +10,7 @@ from backend.config import ParkingFinderSettings
 from backend.database import get_connection, initialize_schema
 from backend.middleware.request_logger import RequestLoggerMiddleware
 from backend.nightly_purge import purge_all_lots
+from backend.signal_scheduler import register_signal_jobs, refresh_weather, refresh_sports_events
 from backend.routes.health import router as health_router
 from backend.routes.parking_lots import router as lots_router
 from backend.routes.vehicle_events import router as events_router
@@ -52,6 +53,19 @@ def create_app(db_path: str | None = None) -> FastAPI:
         )
         scheduler.start()
         app.state.scheduler = scheduler
+
+        # Register signal refresh jobs
+        register_signal_jobs(scheduler, conn, ticketmaster_api_key=settings.ticketmaster_api_key)
+
+        # Initial data fetch on startup (best-effort)
+        try:
+            refresh_weather(conn)
+        except Exception:
+            logger.warning("initial weather fetch failed, will retry on schedule")
+        try:
+            refresh_sports_events(conn)
+        except Exception:
+            logger.warning("initial sports fetch failed, will retry on schedule")
 
     # Mount frontend static files last (catch-all)
     frontend_dir = Path(__file__).parent.parent / "frontend"
