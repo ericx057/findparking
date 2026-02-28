@@ -120,7 +120,7 @@ def list_lots_nearby(
     lat: float = Query(...),
     lon: float = Query(...),
     radius_km: float = Query(default=2.0),
-    limit: int = Query(default=10),
+    limit: int = Query(default=500),
     fare_type: str | None = Query(default=None),
     max_hourly_rate: float | None = Query(default=None),
     is_covered: bool | None = Query(default=None),

@@ -1,6 +1,6 @@
 (function () {
     var POLL_INTERVAL_MS = 30000;
-    var SEARCH_LIMIT = 10;
+    var SEARCH_LIMIT = 500;
     var overlay = document.getElementById('loading-overlay');
     var statusEl = document.getElementById('connection-status');
     var citySelector = document.getElementById('city-selector');

@@ -1,6 +1,17 @@
-"""Seed parking lot data for all supported cities."""
+"""Seed parking lot data for all supported cities.
+
+Seeds hardcoded reference lots first, then enriches with real-world
+parking lots from OpenStreetMap (Overpass API). OSM lots that fall
+within 100m of an existing lot are skipped to avoid duplicates.
+"""
+
+import logging
 
 from backend.database import get_connection, initialize_schema
+from backend.osm_parking import fetch_osm_parking, _is_duplicate
+from cv_pipeline.city_config import CITIES
+
+logger = logging.getLogger(__name__)
 
 LOTS = {
     "waterloo": [
@@ -192,30 +203,63 @@ LOTS = {
 }
 
 
+def _insert_lot(conn, lot: dict, city_key: str) -> None:
+    """Insert a single lot into the database."""
+    conn.execute(
+        "INSERT OR REPLACE INTO parking_lots "
+        "(lot_id, name, latitude, longitude, capacity, current_occupancy, city, "
+        "fare_type, hourly_rate, is_covered, is_multi_level, is_above_ground) "
+        "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)",
+        (lot["lot_id"], lot["name"], lot["latitude"],
+         lot["longitude"], lot["capacity"], city_key,
+         lot.get("fare_type", "free"), lot.get("hourly_rate"),
+         lot.get("is_covered", 0), lot.get("is_multi_level", 0),
+         lot.get("is_above_ground", 1)),
+    )
+
+
 def seed(db_path: str = "findparking.db", city: str | None = None) -> None:
     conn = get_connection(db_path)
     initialize_schema(conn)
 
     cities_to_seed = [city] if city else list(LOTS.keys())
-    total = 0
+    hardcoded_count = 0
+    osm_count = 0
 
     for city_key in cities_to_seed:
+        # 1. Seed hardcoded reference lots
         lots = LOTS.get(city_key, [])
         for lot in lots:
-            conn.execute(
-                "INSERT OR REPLACE INTO parking_lots "
-                "(lot_id, name, latitude, longitude, capacity, current_occupancy, city, "
-                "fare_type, hourly_rate, is_covered, is_multi_level, is_above_ground) "
-                "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)",
-                (lot["lot_id"], lot["name"], lot["latitude"],
-                 lot["longitude"], lot["capacity"], city_key,
-                 lot["fare_type"], lot["hourly_rate"],
-                 lot["is_covered"], lot["is_multi_level"], lot["is_above_ground"]),
-            )
-            total += 1
+            _insert_lot(conn, lot, city_key)
+            hardcoded_count += 1
+
+        # 2. Fetch real lots from OpenStreetMap
+        city_config = CITIES.get(city_key)
+        if city_config is None:
+            continue
+
+        bounds = city_config["bounds"]
+        osm_lots = fetch_osm_parking(bounds, city_key)
+
+        # Build existing-lot list for dedup (hardcoded + already-inserted OSM)
+        existing = [{"latitude": l["latitude"], "longitude": l["longitude"]}
+                    for l in lots]
+
+        for osm_lot in osm_lots:
+            if _is_duplicate(osm_lot["latitude"], osm_lot["longitude"],
+                             existing, threshold_km=0.1):
+                continue
+            _insert_lot(conn, osm_lot, city_key)
+            existing.append({"latitude": osm_lot["latitude"],
+                             "longitude": osm_lot["longitude"]})
+            osm_count += 1
 
     conn.commit()
-    print(f"Seeded {total} parking lots for {', '.join(cities_to_seed)}.")
+    total = hardcoded_count + osm_count
+    logger.info("seeded %d lots (%d hardcoded, %d from OSM) for %s",
+                total, hardcoded_count, osm_count, ", ".join(cities_to_seed))
+    print(f"Seeded {total} parking lots ({hardcoded_count} hardcoded, "
+          f"{osm_count} from OSM) for {', '.join(cities_to_seed)}.")
     conn.close()
 
 

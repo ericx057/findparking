@@ -23,7 +23,7 @@ def get_lots_nearby(
     lat: float,
     lon: float,
     radius_km: float = 2.0,
-    limit: int = 10,
+    limit: int = 500,
     fare_type: str | None = None,
     max_hourly_rate: float | None = None,
     is_covered: bool | None = None,
