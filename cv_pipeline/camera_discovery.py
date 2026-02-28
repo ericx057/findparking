@@ -321,17 +321,44 @@ def main():
         default=None,
         help="Output JSON file path (prints to stdout if omitted)",
     )
+    parser.add_argument(
+        "--assign",
+        action="store_true",
+        help="Assign nearest camera to each lot and write cameras.json",
+    )
+    parser.add_argument(
+        "--db",
+        default="findparking.db",
+        help="Database path (default: findparking.db)",
+    )
     args = parser.parse_args()
 
     cameras = discover_cameras(args.city)
 
-    output = json.dumps(cameras, indent=2)
-    if args.output:
-        with open(args.output, "w") as f:
-            f.write(output)
-        print(f"Wrote {len(cameras)} cameras to {args.output}")
+    if args.assign:
+        from backend.database import get_connection, initialize_schema
+        from cv_pipeline.camera_assignment import assign_cameras_to_lots, generate_cameras_config
+
+        conn = get_connection(args.db)
+        initialize_schema(conn)
+
+        count = assign_cameras_to_lots(conn, args.city, cameras)
+        logger.info("Assigned %d cameras to lots for %s", count, args.city)
+
+        config = generate_cameras_config(conn, args.city)
+        output_path = args.output or "cameras.json"
+        with open(output_path, "w") as f:
+            json.dump(config, f, indent=2)
+        print(f"Assigned {count} cameras. Wrote config to {output_path}")
+        conn.close()
     else:
-        print(output)
+        output = json.dumps(cameras, indent=2)
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(output)
+            print(f"Wrote {len(cameras)} cameras to {args.output}")
+        else:
+            print(output)
 
     if not cameras:
         print(f"No cameras found for {args.city}.")

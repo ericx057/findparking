@@ -39,9 +39,14 @@ var BottomSheet = (function () {
         return R * c;
     }
 
-    function computeWalkingEta(lotLat, lotLng) {
-        if (!userPosition) return 'Location unavailable';
-        var km = haversineKm(userPosition.lat, userPosition.lng, lotLat, lotLng);
+    function computeWalkingEta(lot) {
+        var km = null;
+        if (lot.distance_km != null) {
+            km = lot.distance_km;
+        } else if (userPosition) {
+            km = haversineKm(userPosition.lat, userPosition.lng, lot.latitude, lot.longitude);
+        }
+        if (km == null) return 'Location unavailable';
         var minutes = Math.round((km / 5) * 60);
         if (minutes < 1) return '< 1 min walk';
         return '~' + minutes + ' min walk';
@@ -79,7 +84,7 @@ var BottomSheet = (function () {
         var cap = lot.capacity != null ? lot.capacity : '?';
         capacity.textContent = occ + ' / ' + cap;
 
-        walking.textContent = computeWalkingEta(lot.latitude, lot.longitude);
+        walking.textContent = computeWalkingEta(lot);
 
         var conf = lot.confidence_range || null;
         confidence.textContent = conf ? conf : '--';

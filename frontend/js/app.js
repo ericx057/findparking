@@ -1,12 +1,18 @@
 (function () {
     var POLL_INTERVAL_MS = 30000;
+    var SEARCH_RADIUS_KM = 2.0;
+    var SEARCH_LIMIT = 10;
     var overlay = document.getElementById('loading-overlay');
     var statusEl = document.getElementById('connection-status');
     var citySelector = document.getElementById('city-selector');
+    var searchInput = document.getElementById('search-input');
+    var searchResults = document.getElementById('search-results');
+    var geolocateBtn = document.getElementById('geolocate-btn');
     var pollTimer = null;
     var lotsCache = {};
     var activeCity = 'waterloo';
     var cityConfigs = {};
+    var userLocation = null; // { lat, lon, label }
 
     function setOnline(online) {
         if (online) {
@@ -44,7 +50,17 @@
     }
 
     function pollLots() {
-        ParkingAPI.fetchAllLots(activeCity)
+        var fetchPromise;
+        if (userLocation) {
+            fetchPromise = ParkingAPI.fetchNearbyLots(
+                userLocation.lat, userLocation.lon,
+                SEARCH_RADIUS_KM, SEARCH_LIMIT
+            );
+        } else {
+            fetchPromise = ParkingAPI.fetchAllLots(activeCity);
+        }
+
+        fetchPromise
             .then(function (lots) {
                 setOnline(true);
 
@@ -60,11 +76,38 @@
             });
     }
 
-    function switchCity(city) {
-        activeCity = city;
+    function handleLocationSelected(lat, lon, label) {
+        userLocation = { lat: lat, lon: lon, label: label };
         lotsCache = {};
         BottomSheet.close();
         ParkingMap.clearPins();
+        ParkingMap.setUserLocation(lat, lon, SEARCH_RADIUS_KM);
+        pollLots();
+    }
+
+    function clearLocationSearch() {
+        userLocation = null;
+        lotsCache = {};
+        BottomSheet.close();
+        ParkingMap.clearPins();
+        ParkingMap.clearUserLocation();
+        LocationSearch.clearInput();
+
+        var config = cityConfigs[activeCity];
+        if (config) {
+            ParkingMap.setView(config.center, config.zoom);
+        }
+        pollLots();
+    }
+
+    function switchCity(city) {
+        activeCity = city;
+        userLocation = null;
+        lotsCache = {};
+        BottomSheet.close();
+        ParkingMap.clearPins();
+        ParkingMap.clearUserLocation();
+        LocationSearch.clearInput();
 
         var config = cityConfigs[city];
         if (config) {
@@ -76,13 +119,11 @@
     }
 
     function init() {
-        // Fetch config first, then init map with correct center
         ParkingAPI.fetchConfig()
             .then(function (config) {
                 activeCity = config.active_city || 'waterloo';
                 cityConfigs = config.cities || {};
 
-                // Set dropdown to active city
                 if (citySelector) {
                     citySelector.value = activeCity;
                 }
@@ -92,6 +133,14 @@
                 var center = config.center;
                 var zoom = config.zoom;
                 ParkingMap.initMap(center, zoom);
+
+                // Wire map click for pin-drop location
+                ParkingMap.enableMapClick(function (lat, lon) {
+                    if (searchInput) {
+                        searchInput.value = lat.toFixed(4) + ', ' + lon.toFixed(4);
+                    }
+                    handleLocationSelected(lat, lon, 'Dropped pin');
+                });
 
                 return ParkingAPI.fetchAllLots(activeCity);
             })
@@ -104,13 +153,29 @@
                 dismissLoader();
             })
             .catch(function () {
-                // Config fetch failed -- init map with fallback
                 ParkingMap.initMap();
                 setOnline(false);
                 dismissLoader();
             });
 
-        // City selector change handler
+        // Search bar
+        if (searchInput && searchResults) {
+            LocationSearch.init(searchInput, searchResults, handleLocationSelected);
+        }
+
+        // Geolocation button
+        if (geolocateBtn) {
+            geolocateBtn.addEventListener('click', function () {
+                LocationSearch.getUserLocation(function (lat, lon, label) {
+                    if (searchInput) {
+                        searchInput.value = 'My Location';
+                    }
+                    handleLocationSelected(lat, lon, label);
+                });
+            });
+        }
+
+        // City selector
         if (citySelector) {
             citySelector.addEventListener('change', function () {
                 switchCity(citySelector.value);

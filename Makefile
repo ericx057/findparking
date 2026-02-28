@@ -1,4 +1,4 @@
-.PHONY: install install-cv test run-backend run-mock run-pipeline lint seed discover-cameras
+.PHONY: install install-cv test run-backend run-mock run-pipeline lint seed discover-cameras assign-cameras
 
 install:
 	pip install -r requirements.txt
@@ -26,3 +26,6 @@ seed:
 
 discover-cameras:
 	python -m cv_pipeline.camera_discovery --city $(or $(CITY),waterloo)
+
+assign-cameras:
+	python -m cv_pipeline.camera_discovery --city $(or $(CITY),waterloo) --assign

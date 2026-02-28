@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from backend.parking_lot_repository import get_all_lots, get_lot, get_lots_by_city
+from backend.parking_lot_repository import get_all_lots, get_lot, get_lots_by_city, get_lots_nearby
 from backend.probability_engine import (
     classify_availability,
     compute_spot_probability,
@@ -92,6 +92,25 @@ def list_lots(request: Request, city: str | None = Query(default=None)):
     else:
         lots = get_all_lots(conn)
     return [_compute_lot_response(lot, conn) for lot in lots]
+
+
+@router.get("/lots/nearby")
+def list_lots_nearby(
+    request: Request,
+    lat: float = Query(...),
+    lon: float = Query(...),
+    radius_km: float = Query(default=2.0),
+    limit: int = Query(default=10),
+):
+    conn = request.app.state.db_conn
+    lots = get_lots_nearby(conn, lat, lon, radius_km=radius_km, limit=limit)
+    results = []
+    for lot in lots:
+        distance_km = lot.pop("distance_km")
+        response = _compute_lot_response(lot, conn)
+        response["distance_km"] = distance_km
+        results.append(response)
+    return results
 
 
 @router.get("/lots/{lot_id}")

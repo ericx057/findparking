@@ -445,3 +445,131 @@ html, body {
         transform: translateY(calc(100% + 32px));
     }
 }
+
+/* ---- Search Bar ---- */
+
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    max-width: 320px;
+    margin: 0 12px;
+}
+
+.search-input {
+    flex: 1;
+    font-family: var(--font-data);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.search-input::placeholder {
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+
+.search-input:focus {
+    border-color: var(--accent-green);
+}
+
+.geolocate-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.geolocate-btn:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 28px;
+    margin-top: 4px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    z-index: 2000;
+    display: none;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.search-results.visible {
+    display: block;
+}
+
+.search-result-item {
+    font-family: var(--font-data);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.1s ease, color 0.1s ease;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+/* ---- Pin Tooltip ---- */
+
+.pin-tooltip {
+    font-family: var(--font-data) !important;
+    font-size: 10px !important;
+    letter-spacing: 1px !important;
+    background: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 2px !important;
+    padding: 3px 8px !important;
+    box-shadow: none !important;
+}
+
+.pin-tooltip::before {
+    border-top-color: var(--border) !important;
+}
+
+@media (max-width: 767px) {
+    .search-container {
+        max-width: 180px;
+        margin: 0 8px;
+    }
+
+    .header-title {
+        display: none;
+    }
+}

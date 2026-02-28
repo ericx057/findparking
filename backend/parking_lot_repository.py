@@ -1,5 +1,8 @@
+import math
 import sqlite3
 from datetime import datetime, timezone
+
+from backend.geo import haversine_km
 
 
 def get_all_lots(conn: sqlite3.Connection) -> list[sqlite3.Row]:
@@ -13,6 +16,40 @@ def get_lots_by_city(conn: sqlite3.Connection, city: str) -> list[sqlite3.Row]:
         "SELECT * FROM parking_lots WHERE city = ? ORDER BY name",
         (city,),
     ).fetchall()
+
+
+def get_lots_nearby(
+    conn: sqlite3.Connection,
+    lat: float,
+    lon: float,
+    radius_km: float = 2.0,
+    limit: int = 10,
+) -> list[dict]:
+    """Return lots within radius_km of (lat, lon), sorted by distance.
+
+    Uses a bounding-box SQL pre-filter then exact Haversine in Python.
+    Each returned dict includes all lot columns plus 'distance_km'.
+    """
+    lat_margin = radius_km / 111.0
+    lon_margin = radius_km / (111.0 * max(math.cos(math.radians(lat)), 0.01))
+
+    rows = conn.execute(
+        "SELECT * FROM parking_lots "
+        "WHERE latitude BETWEEN ? AND ? "
+        "AND longitude BETWEEN ? AND ?",
+        (lat - lat_margin, lat + lat_margin, lon - lon_margin, lon + lon_margin),
+    ).fetchall()
+
+    results = []
+    for row in rows:
+        dist = haversine_km(lat, lon, row["latitude"], row["longitude"])
+        if dist <= radius_km:
+            lot_dict = dict(row)
+            lot_dict["distance_km"] = round(dist, 3)
+            results.append(lot_dict)
+
+    results.sort(key=lambda x: x["distance_km"])
+    return results[:limit]
 
 
 def get_lot(conn: sqlite3.Connection, lot_id: str) -> sqlite3.Row | None:

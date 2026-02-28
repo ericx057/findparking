@@ -48,4 +48,14 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
             weight REAL NOT NULL DEFAULT 1.0,
             PRIMARY KEY (lot_id, hour, day_of_week)
         );
+
+        CREATE TABLE IF NOT EXISTS camera_assignments (
+            lot_id TEXT NOT NULL REFERENCES parking_lots(lot_id),
+            camera_id TEXT NOT NULL,
+            distance_km REAL NOT NULL,
+            image_url TEXT,
+            source TEXT,
+            assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (lot_id, camera_id)
+        );
     """)

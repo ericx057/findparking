@@ -28,6 +28,19 @@
             <span class="header-logo">FP://</span>
             <span class="header-title">FINDPARKING</span>
         </div>
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Search address..." autocomplete="off" />
+            <button id="geolocate-btn" class="geolocate-btn" aria-label="Use my location" title="Use my location">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="4"/>
+                    <line x1="12" y1="2" x2="12" y2="6"/>
+                    <line x1="12" y1="18" x2="12" y2="22"/>
+                    <line x1="2" y1="12" x2="6" y2="12"/>
+                    <line x1="18" y1="12" x2="22" y2="12"/>
+                </svg>
+            </button>
+            <div id="search-results" class="search-results"></div>
+        </div>
         <div class="header-right">
             <select id="city-selector" class="city-selector" aria-label="Select city">
                 <option value="waterloo">WATERLOO, ON</option>
@@ -88,6 +101,7 @@
     <script src="/js/parking_api.js"></script>
     <script src="/js/map.js"></script>
     <script src="/js/bottom_sheet.js"></script>
+    <script src="/js/search.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

@@ -2,10 +2,11 @@
 
 import json
 import logging
+import os
 import signal
 import threading
 
-from cv_pipeline.config import load_cameras_config
+from cv_pipeline.config import load_cameras_config, CameraConfig, TripwireConfig
 from cv_pipeline.event_emitter import HttpEventEmitter
 from cv_pipeline.frame_source import HttpJpegSource
 from cv_pipeline.pipeline import ParkingPipeline
@@ -16,15 +17,47 @@ from cv_pipeline.vehicle_tracker import VehicleTracker
 logger = logging.getLogger("findparking.runner")
 
 
+def _load_cameras_from_db(db_path: str, city: str) -> list[CameraConfig]:
+    """Fallback: generate camera configs from DB assignments."""
+    from backend.database import get_connection, initialize_schema
+    from cv_pipeline.camera_assignment import generate_cameras_config
+
+    conn = get_connection(db_path)
+    initialize_schema(conn)
+    config = generate_cameras_config(conn, city)
+    conn.close()
+
+    cameras = []
+    for cam in config.get("cameras", []):
+        tripwires = [TripwireConfig(**tw) for tw in cam.get("tripwires", [])]
+        cameras.append(CameraConfig(
+            lot_id=cam["lot_id"],
+            camera_url=cam["camera_url"],
+            poll_interval_seconds=cam.get("poll_interval_seconds", 10.0),
+            tripwires=tripwires,
+        ))
+    return cameras
+
+
 def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
 
-    cameras = load_cameras_config("cameras.json")
+    cameras = []
+    cameras_json = "cameras.json"
+    if os.path.exists(cameras_json):
+        cameras = load_cameras_config(cameras_json)
+
     if not cameras:
-        logger.error("No cameras configured in cameras.json")
+        db_path = os.environ.get("FINDPARKING_DB", "findparking.db")
+        city = os.environ.get("FINDPARKING_CITY", "waterloo")
+        logger.info("No cameras.json found, loading from DB assignments (city=%s)", city)
+        cameras = _load_cameras_from_db(db_path, city)
+
+    if not cameras:
+        logger.error("No cameras configured -- run 'make assign-cameras' first")
         return
 
     backend_url = "http://localhost:8000"
