@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: findparking
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PARKING_DB_PATH
+        value: /tmp/findparking.db
+      - key: PARKING_LOG_LEVEL
+        value: INFO
+      - key: PARKING_TICKETMASTER_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+    healthCheckPath: /api/health

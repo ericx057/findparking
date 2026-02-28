@@ -32,6 +32,17 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     conn = get_connection(resolved_db_path)
     initialize_schema(conn)
+
+    # Auto-seed if database has no parking lots (fresh deploy, skip for in-memory test DBs)
+    if resolved_db_path != ":memory:":
+        row = conn.execute("SELECT COUNT(*) FROM parking_lots").fetchone()
+        if row[0] == 0:
+            from seed_lots import seed
+            logger.info("empty database detected, seeding parking lots")
+            seed(db_path=resolved_db_path)
+            # Re-read connection since seed() opens its own
+            conn = get_connection(resolved_db_path)
+
     app.state.db_conn = conn
     app.state.settings = settings
 

@@ -1,7 +1,7 @@
 .PHONY: install install-cv test run-backend run-mock run-pipeline lint seed discover-cameras assign-cameras
 
 install:
-	pip install -r requirements.txt
+	pip install -r requirements-dev.txt
 
 install-cv:
 	pip install -r requirements-cv.txt
