@@ -30,34 +30,4 @@ When some signals are unavailable, weights renormalize across whatever is presen
 
 ## Deploy to Render
 
-### One-click deploy
-
-1. Push this repo to GitHub.
-2. Go to [Render Dashboard](https://dashboard.render.com/) and select **New > Blueprint**.
-3. Connect your GitHub repo. Render will detect `render.yaml` and configure the service automatically.
-4. Optionally set `PARKING_TICKETMASTER_API_KEY` in the Render dashboard for concert/festival event data.
-5. Deploy. The app creates the database and seeds parking lots on first startup.
-
-### What happens on deploy
-
-- Render installs production dependencies from `requirements.txt`.
-- Uvicorn starts on the port Render assigns.
-- SQLite database is created at `/tmp/findparking.db`.
-- If the database is empty, 15 lots across 3 cities are seeded automatically.
-- Background scheduler fetches weather and sports event data on startup.
-- The filesystem is ephemeral: the database resets on every deploy or restart. Fresh signal data is fetched on each startup.
-
-### Environment variables
-
-All prefixed with `PARKING_`. Set in the Render dashboard or in a local `.env` file.
-
-| Variable | Default | Description |
-|---|---|---|
-| `PARKING_DB_PATH` | `findparking.db` | Path to SQLite database file |
-| `PARKING_CITY` | `waterloo` | Default city for frontend |
-| `PARKING_LOG_LEVEL` | `INFO` | Python log level |
-| `PARKING_TICKETMASTER_API_KEY` | *(empty)* | Optional Ticketmaster API key |
-
-## Quick Start (Local)
-
 https://findparking.onrender.com
