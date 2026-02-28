@@ -1,0 +1,5 @@
+-r requirements.txt
+opencv-python-headless==4.8.1.78
+ultralytics==8.0.232
+deep-sort-realtime==1.3.2
+numpy

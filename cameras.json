@@ -1,0 +1,12 @@
+{
+  "cameras": [
+    {
+      "lot_id": "waterloo-town-square",
+      "camera_url": "https://511on.ca/map/Cctv/513",
+      "poll_interval_seconds": 10,
+      "tripwires": [
+        {"x1": 200, "y1": 300, "x2": 500, "y2": 300}
+      ]
+    }
+  ]
+}

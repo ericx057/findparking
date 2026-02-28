@@ -1,0 +1,21 @@
+Probabilistic Parking Finder MVP
+
+Phase: 1 - Project Skeleton
+Status: In progress
+
+Architecture:
+- Backend: FastAPI + SQLite (WAL mode)
+- Frontend: Leaflet.js + plain HTML/CSS/JS (served as static files by FastAPI)
+- CV Pipeline: OpenCV + YOLOv8n + DeepSORT
+- Deployment: Cloud VM (single machine)
+
+Core concept:
+- Virtual tripwire at parking lot entrances tracks inbound/outbound vehicle flow
+- Probability engine: P_spot = V(t) * W_h where V(t) = (C - O(t)) / C
+- Boundary enforcement: 0 <= O(t) <= C
+- Nightly purge at 03:00 resets cumulative error
+
+Target area: Waterloo, Ontario (1-3 pilot lots)
+Camera sources: Ontario 511 public cams for pipeline validation, own camera for lot data
+
+Build approach: Full vertical slice (mock CV -> backend -> frontend connected end-to-end)
