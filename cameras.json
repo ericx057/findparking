@@ -7,6 +7,46 @@
       "tripwires": [
         {"x1": 200, "y1": 300, "x2": 500, "y2": 300}
       ]
+    },
+    {
+      "lot_id": "tor-union-station",
+      "camera_url": "https://opendata.toronto.ca/transportation/tmc/rescucameraimages/CameraImages/loc8004.jpg",
+      "poll_interval_seconds": 10,
+      "tripwires": [
+        {"x1": 0, "y1": 240, "x2": 640, "y2": 240}
+      ]
+    },
+    {
+      "lot_id": "tor-eaton-centre",
+      "camera_url": "https://opendata.toronto.ca/transportation/tmc/rescucameraimages/CameraImages/loc8032.jpg",
+      "poll_interval_seconds": 10,
+      "tripwires": [
+        {"x1": 0, "y1": 240, "x2": 640, "y2": 240}
+      ]
+    },
+    {
+      "lot_id": "tor-nathan-phillips",
+      "camera_url": "https://opendata.toronto.ca/transportation/tmc/rescucameraimages/CameraImages/loc8114.jpg",
+      "poll_interval_seconds": 10,
+      "tripwires": [
+        {"x1": 0, "y1": 240, "x2": 640, "y2": 240}
+      ]
+    },
+    {
+      "lot_id": "tor-yorkville",
+      "camera_url": "https://opendata.toronto.ca/transportation/tmc/rescucameraimages/CameraImages/loc8045.jpg",
+      "poll_interval_seconds": 10,
+      "tripwires": [
+        {"x1": 0, "y1": 240, "x2": 640, "y2": 240}
+      ]
+    },
+    {
+      "lot_id": "tor-kensington",
+      "camera_url": "https://opendata.toronto.ca/transportation/tmc/rescucameraimages/CameraImages/loc8165.jpg",
+      "poll_interval_seconds": 10,
+      "tripwires": [
+        {"x1": 0, "y1": 240, "x2": 640, "y2": 240}
+      ]
     }
   ]
 }
