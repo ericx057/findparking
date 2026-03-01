@@ -2,6 +2,8 @@ var ParkingMap = (function () {
     var map = null;
     var pinLayer = null;
     var markers = {};
+    var lotDataCache = {};
+    var rankMarkers = {};
     var userMarker = null;
     var userCircle = null;
     var mapClickCallback = null;
@@ -11,6 +13,15 @@ var ParkingMap = (function () {
         medium: '#eab308',
         low: '#ef4444',
         stale: '#6b7280'
+    };
+
+    var SIGNAL_LABELS = {
+        'camera': 'CAM',
+        'heuristic_baseline': 'EST',
+        'sports_event': 'EVENT',
+        'weather': 'WX',
+        'time_weights': 'TIME',
+        'road_disruptions': 'ROAD'
     };
 
     var FALLBACK_CENTER = [43.4643, -80.5204];
@@ -62,11 +73,54 @@ var ParkingMap = (function () {
         return PIN_COLORS[availability] || PIN_COLORS.stale;
     }
 
+    function buildContextPopupHtml(lot) {
+        var pct = lot.probability_score != null
+            ? (lot.probability_score * 100).toFixed(1) + '%'
+            : '--';
+        var conf = lot.confidence_range || '--';
+        var avail = lot.availability ? lot.availability.toUpperCase() : '--';
+        var signals = '--';
+        if (lot.signals_used && lot.signals_used.length > 0) {
+            signals = lot.signals_used.map(function (s) {
+                return '<span class="ctx-signal-tag">' + (SIGNAL_LABELS[s] || s.toUpperCase()) + '</span>';
+            }).join(' ');
+        }
+        var trendText = lot.trend ? lot.trend.toUpperCase() : 'STABLE';
+        var trendClass = 'ctx-trend-stable';
+        if (lot.trend === 'filling') trendClass = 'ctx-trend-filling';
+        if (lot.trend === 'emptying') trendClass = 'ctx-trend-emptying';
+
+        var predicted = lot.predicted_probability != null
+            ? Math.round(lot.predicted_probability * 100) + '%'
+            : '--';
+        var freshness = '--';
+        if (lot.freshness_seconds != null) {
+            if (lot.freshness_seconds < 60) freshness = Math.round(lot.freshness_seconds) + 's ago';
+            else freshness = Math.floor(lot.freshness_seconds / 60) + 'm ago';
+        }
+
+        var occ = lot.current_occupancy != null ? lot.current_occupancy : '?';
+        var cap = lot.capacity != null ? lot.capacity : '?';
+
+        return '<div class="ctx-popup">' +
+            '<div class="ctx-header">' + (lot.name || '--') + '</div>' +
+            '<div class="ctx-row"><span class="ctx-label">PROBABILITY</span><span class="ctx-value">' + pct + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">CONFIDENCE</span><span class="ctx-value">' + conf + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">AVAILABILITY</span><span class="ctx-value ctx-avail-' + (lot.availability || 'stale') + '">' + avail + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">TREND</span><span class="ctx-value ' + trendClass + '">' + trendText + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">OCCUPANCY</span><span class="ctx-value">' + occ + ' / ' + cap + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">PREDICTED</span><span class="ctx-value">' + predicted + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">UPDATED</span><span class="ctx-value">' + freshness + '</span></div>' +
+            '<div class="ctx-row ctx-signals-row"><span class="ctx-label">SIGNALS</span><span class="ctx-value">' + signals + '</span></div>' +
+            '</div>';
+    }
+
     function updatePins(lots, onPinClick) {
         var currentIds = {};
 
         lots.forEach(function (lot) {
             currentIds[lot.lot_id] = true;
+            lotDataCache[lot.lot_id] = lot;
             var color = getPinColor(lot);
 
             if (markers[lot.lot_id]) {
@@ -90,6 +144,25 @@ var ParkingMap = (function () {
                     }
                 });
 
+                (function (lotId) {
+                    marker.on('contextmenu', function (e) {
+                        L.DomEvent.stopPropagation(e);
+                        L.DomEvent.preventDefault(e);
+                        var data = lotDataCache[lotId];
+                        if (!data) return;
+                        var popup = L.popup({
+                            className: 'ctx-popup-wrapper',
+                            closeButton: true,
+                            maxWidth: 260,
+                            minWidth: 200,
+                            autoPan: true
+                        })
+                            .setLatLng(e.latlng)
+                            .setContent(buildContextPopupHtml(data))
+                            .openOn(map);
+                    });
+                })(lot.lot_id);
+
                 marker.bindTooltip(lot.name, {
                     permanent: false,
                     direction: 'top',
@@ -107,6 +180,7 @@ var ParkingMap = (function () {
             if (!currentIds[id]) {
                 pinLayer.removeLayer(markers[id]);
                 delete markers[id];
+                delete lotDataCache[id];
             }
         });
     }
@@ -168,6 +242,33 @@ var ParkingMap = (function () {
         }
     }
 
+    function clearRankMarkers() {
+        Object.keys(rankMarkers).forEach(function (id) {
+            if (map) map.removeLayer(rankMarkers[id]);
+        });
+        rankMarkers = {};
+    }
+
+    function updateRankings(rankedLots) {
+        clearRankMarkers();
+        rankedLots.forEach(function (entry) {
+            var lot = entry.lot;
+            var rank = entry.rank;
+            var icon = L.divIcon({
+                className: 'rank-badge rank-' + rank,
+                html: '<span>#' + rank + '</span>',
+                iconSize: [22, 22],
+                iconAnchor: [11, -4]
+            });
+            var rm = L.marker([lot.latitude, lot.longitude], {
+                icon: icon,
+                interactive: false,
+                zIndexOffset: 1000 - rank
+            }).addTo(map);
+            rankMarkers[lot.lot_id] = rm;
+        });
+    }
+
     return {
         initMap: initMap,
         setView: setView,
@@ -177,6 +278,8 @@ var ParkingMap = (function () {
         setUserLocation: setUserLocation,
         clearUserLocation: clearUserLocation,
         enableMapClick: enableMapClick,
-        updateRadius: updateRadius
+        updateRadius: updateRadius,
+        updateRankings: updateRankings,
+        clearRankMarkers: clearRankMarkers
     };
 })();

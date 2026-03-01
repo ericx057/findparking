@@ -1,6 +1,9 @@
 (function () {
     var POLL_INTERVAL_MS = 30000;
     var SEARCH_LIMIT = 500;
+    var RANK_COUNT = 3;
+    var PROB_WEIGHT = 0.65;
+    var DIST_WEIGHT = 0.35;
     var overlay = document.getElementById('loading-overlay');
     var statusEl = document.getElementById('connection-status');
     var citySelector = document.getElementById('city-selector');
@@ -50,6 +53,38 @@
         }
     }
 
+    function computeRankings(lots) {
+        // Only rank lots that have both probability and distance data
+        var candidates = lots.filter(function (lot) {
+            return lot.probability_score != null
+                && lot.distance_km != null
+                && lot.availability !== 'stale';
+        });
+        if (candidates.length === 0) return [];
+
+        // Normalize distance: invert so closer = higher score
+        var maxDist = 0;
+        candidates.forEach(function (lot) {
+            if (lot.distance_km > maxDist) maxDist = lot.distance_km;
+        });
+        if (maxDist === 0) maxDist = 1;
+
+        var scored = candidates.map(function (lot) {
+            var probScore = lot.probability_score;
+            var distScore = 1 - (lot.distance_km / maxDist);
+            var combined = (PROB_WEIGHT * probScore) + (DIST_WEIGHT * distScore);
+            return { lot: lot, score: combined };
+        });
+
+        scored.sort(function (a, b) { return b.score - a.score; });
+
+        var top = [];
+        for (var i = 0; i < Math.min(RANK_COUNT, scored.length); i++) {
+            top.push({ lot: scored[i].lot, rank: i + 1 });
+        }
+        return top;
+    }
+
     function pollLots() {
         var fetchPromise;
         if (userLocation) {
@@ -72,6 +107,14 @@
                 });
 
                 ParkingMap.updatePins(lots, handlePinClick);
+
+                // Compute and display top-3 rankings when location is set
+                if (userLocation) {
+                    var ranked = computeRankings(lots);
+                    ParkingMap.updateRankings(ranked);
+                } else {
+                    ParkingMap.clearRankMarkers();
+                }
             })
             .catch(function (err) {
                 console.error('Poll failed:', err);
@@ -102,6 +145,7 @@
         lotsCache = {};
         BottomSheet.close();
         ParkingMap.clearPins();
+        ParkingMap.clearRankMarkers();
         ParkingMap.clearUserLocation();
         LocationSearch.clearInput();
 
@@ -118,6 +162,7 @@
         lotsCache = {};
         BottomSheet.close();
         ParkingMap.clearPins();
+        ParkingMap.clearRankMarkers();
         ParkingMap.clearUserLocation();
         LocationSearch.clearInput();
 
