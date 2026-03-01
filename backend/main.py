@@ -77,6 +77,11 @@ def create_app(db_path: str | None = None) -> FastAPI:
             refresh_sports_events(conn)
         except Exception:
             logger.warning("initial sports fetch failed, will retry on schedule")
+        try:
+            from backend.signals.demand_heatmap import refresh_osm_demand_nodes
+            refresh_osm_demand_nodes(conn)
+        except Exception:
+            logger.warning("initial demand node fetch failed, will retry on schedule")
 
     # Mount frontend static files last (catch-all)
     frontend_dir = Path(__file__).parent.parent / "frontend"

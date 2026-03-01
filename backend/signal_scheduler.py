@@ -191,6 +191,16 @@ def register_signal_jobs(scheduler, conn: sqlite3.Connection, ticketmaster_api_k
         )
         logger.info("ticketmaster signal enabled")
 
+    # Demand heatmap OSM POI nodes: weekly refresh (POIs don't change frequently)
+    from backend.signals.demand_heatmap import refresh_osm_demand_nodes
+    scheduler.add_job(
+        refresh_osm_demand_nodes,
+        trigger=IntervalTrigger(days=7),
+        args=[conn],
+        id="refresh_demand_nodes",
+        replace_existing=True,
+    )
+
     logger.info("signal_scheduler registered jobs")
 
 

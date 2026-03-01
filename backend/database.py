@@ -129,6 +129,21 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
             ON cached_weather(city, fetched_at);
         CREATE INDEX IF NOT EXISTS idx_cached_road_disruptions_city
             ON cached_road_disruptions(city);
+        CREATE TABLE IF NOT EXISTS cached_demand_nodes (
+            node_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            source TEXT NOT NULL,
+            category TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            amplitude REAL NOT NULL DEFAULT 1.0,
+            sigma_km REAL NOT NULL DEFAULT 0.4,
+            name TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
         CREATE INDEX IF NOT EXISTS idx_signal_audit_lot_time
             ON signal_audit_log(lot_id, timestamp);
+        CREATE INDEX IF NOT EXISTS idx_demand_nodes_city
+            ON cached_demand_nodes(city);
     """)
