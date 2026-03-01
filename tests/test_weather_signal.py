@@ -126,14 +126,32 @@ def test_weather_signal_returns_none_when_no_data(db_conn):
     assert result is None
 
 
-def test_weather_signal_clear_day_full_availability(db_conn):
+def test_weather_signal_clear_day_returns_none(db_conn):
+    """Clear day with normal temperature provides no signal -- weather has nothing to add."""
     _insert_lot(db_conn, city="toronto")
     _insert_weather(db_conn, "toronto", "clear", 20.0, minutes_ago=5)
     signal = WeatherSignal()
     result = signal.evaluate(db_conn, "lot-001", 43.65, -79.38, "toronto", 100, 0)
+    assert result is None
+
+
+def test_weather_signal_cloudy_day_returns_none(db_conn):
+    """Cloudy with normal temp is also benign -- no signal."""
+    _insert_lot(db_conn, city="toronto")
+    _insert_weather(db_conn, "toronto", "cloudy", 15.0, minutes_ago=5)
+    signal = WeatherSignal()
+    result = signal.evaluate(db_conn, "lot-001", 43.65, -79.38, "toronto", 100, 0)
+    assert result is None
+
+
+def test_weather_signal_clear_but_extreme_cold_fires(db_conn):
+    """Clear sky but extreme cold still affects parking behavior."""
+    _insert_lot(db_conn, city="toronto")
+    _insert_weather(db_conn, "toronto", "clear", -20.0, minutes_ago=5)
+    signal = WeatherSignal()
+    result = signal.evaluate(db_conn, "lot-001", 43.65, -79.38, "toronto", 100, 0)
     assert result is not None
-    assert result.source == "weather"
-    assert result.value == 1.00  # clear + normal temp
+    assert result.value < 1.0
 
 
 def test_weather_signal_snow_reduces_availability(db_conn):
@@ -148,7 +166,7 @@ def test_weather_signal_snow_reduces_availability(db_conn):
 
 def test_weather_signal_stale_data_reduces_confidence(db_conn):
     _insert_lot(db_conn, city="toronto")
-    _insert_weather(db_conn, "toronto", "clear", 20.0, minutes_ago=120)
+    _insert_weather(db_conn, "toronto", "rain", 10.0, minutes_ago=120)
     signal = WeatherSignal()
     result = signal.evaluate(db_conn, "lot-001", 43.65, -79.38, "toronto", 100, 0)
     assert result is not None
@@ -157,7 +175,7 @@ def test_weather_signal_stale_data_reduces_confidence(db_conn):
 
 def test_weather_signal_very_stale_returns_none(db_conn):
     _insert_lot(db_conn, city="toronto")
-    _insert_weather(db_conn, "toronto", "clear", 20.0, minutes_ago=360)
+    _insert_weather(db_conn, "toronto", "rain", 10.0, minutes_ago=360)
     signal = WeatherSignal()
     result = signal.evaluate(db_conn, "lot-001", 43.65, -79.38, "toronto", 100, 0)
     assert result is None  # >4h = too stale

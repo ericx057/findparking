@@ -151,6 +151,11 @@ class WeatherSignal(BaseSignal):
         cond_mult = condition_multiplier(condition)
         temp_mod = temperature_modifier(row["temp_celsius"])
 
+        # Normal conditions (clear/cloudy + mild temp) provide no signal.
+        # Weather only fires when conditions actively affect parking behavior.
+        if cond_mult >= 1.0 and temp_mod >= 1.0:
+            return None
+
         value = cond_mult * temp_mod
         confidence = _weather_confidence(staleness)
 

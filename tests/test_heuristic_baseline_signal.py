@@ -114,14 +114,14 @@ def test_signal_returns_result_for_mall():
     assert result is not None
     assert result.source == "heuristic_baseline"
     assert 0.0 <= result.value <= 1.0
-    assert result.confidence == pytest.approx(0.35)
+    assert result.confidence == pytest.approx(0.55)
 
 
 def test_mall_saturday_afternoon_shows_low_availability():
     conn = _make_conn("free", 2000)
     signal = HeuristicBaselineSignal()
-    # Mock Saturday (dow=5) at 2pm
-    mock_now = datetime(2026, 1, 3, 14, 0, 0, tzinfo=timezone.utc)  # Saturday
+    # Mock Saturday at 2pm local (EST=UTC-5, so 19:00 UTC)
+    mock_now = datetime(2026, 1, 3, 19, 0, 0, tzinfo=timezone.utc)  # Saturday
     with patch("backend.signals.heuristic_baseline.datetime") as mock_dt:
         mock_dt.now.return_value = mock_now
         result = signal.evaluate(conn, "test-lot", 43.0, -79.0, "waterloo", 2000, 0)
@@ -133,8 +133,8 @@ def test_mall_saturday_afternoon_shows_low_availability():
 def test_mall_early_morning_shows_high_availability():
     conn = _make_conn("free", 2000)
     signal = HeuristicBaselineSignal()
-    # Mock Tuesday (dow=1) at 5am
-    mock_now = datetime(2026, 1, 6, 5, 0, 0, tzinfo=timezone.utc)  # Tuesday
+    # Mock Tuesday at 5am local (EST=UTC-5, so 10:00 UTC)
+    mock_now = datetime(2026, 1, 6, 10, 0, 0, tzinfo=timezone.utc)  # Tuesday
     with patch("backend.signals.heuristic_baseline.datetime") as mock_dt:
         mock_dt.now.return_value = mock_now
         result = signal.evaluate(conn, "test-lot", 43.0, -79.0, "waterloo", 2000, 0)
@@ -147,8 +147,9 @@ def test_mall_weekend_less_available_than_weekday():
     conn = _make_conn("free", 2000)
     signal = HeuristicBaselineSignal()
 
-    saturday_noon = datetime(2026, 1, 3, 12, 0, 0, tzinfo=timezone.utc)  # Saturday
-    tuesday_noon = datetime(2026, 1, 6, 12, 0, 0, tzinfo=timezone.utc)   # Tuesday
+    # noon local = 17:00 UTC (EST=UTC-5)
+    saturday_noon = datetime(2026, 1, 3, 17, 0, 0, tzinfo=timezone.utc)  # Saturday
+    tuesday_noon = datetime(2026, 1, 6, 17, 0, 0, tzinfo=timezone.utc)   # Tuesday
 
     with patch("backend.signals.heuristic_baseline.datetime") as mock_dt:
         mock_dt.now.return_value = saturday_noon
@@ -166,8 +167,9 @@ def test_downtown_weekday_peak_less_available():
     conn = _make_conn("hourly", 400)
     signal = HeuristicBaselineSignal()
 
-    wednesday_10am = datetime(2026, 1, 7, 10, 0, 0, tzinfo=timezone.utc)  # Wednesday
-    saturday_10am = datetime(2026, 1, 3, 10, 0, 0, tzinfo=timezone.utc)   # Saturday
+    # 10am local = 15:00 UTC (EST=UTC-5)
+    wednesday_10am = datetime(2026, 1, 7, 15, 0, 0, tzinfo=timezone.utc)  # Wednesday
+    saturday_10am = datetime(2026, 1, 3, 15, 0, 0, tzinfo=timezone.utc)   # Saturday
 
     with patch("backend.signals.heuristic_baseline.datetime") as mock_dt:
         mock_dt.now.return_value = wednesday_10am

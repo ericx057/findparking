@@ -2,13 +2,25 @@
 
 Provides a reasonable availability estimate when no camera data exists.
 Uses built-in curves based on lot classification (mall, downtown, generic),
-hour of day, and weekday vs weekend patterns.
+local hour of day, and weekday vs weekend patterns.
 """
 
 import sqlite3
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from backend.signals import BaseSignal, SignalResult
+
+
+# --- City timezone mapping ---
+
+_CITY_TIMEZONES = {
+    "toronto": ZoneInfo("America/Toronto"),
+    "waterloo": ZoneInfo("America/Toronto"),
+    "vancouver": ZoneInfo("America/Vancouver"),
+}
+
+_DEFAULT_TZ = ZoneInfo("America/Toronto")
 
 
 # --- Hour-indexed occupancy curves (0-23), values = fraction occupied ---
@@ -77,7 +89,7 @@ def _day_scale(day_of_week: int, lot_type: str) -> float:
 
 class HeuristicBaselineSignal(BaseSignal):
     name = "heuristic_baseline"
-    base_weight = 0.15
+    base_weight = 0.30
 
     def evaluate(
         self,
@@ -99,9 +111,11 @@ class HeuristicBaselineSignal(BaseSignal):
         fare_type = row["fare_type"] or "free"
         lot_type = _classify_lot(fare_type, capacity)
 
-        now = datetime.now(timezone.utc)
-        hour = now.hour
-        day_of_week = now.weekday()
+        # Convert to local time for the city -- curves are local-time patterns
+        local_tz = _CITY_TIMEZONES.get(city, _DEFAULT_TZ)
+        now_local = datetime.now(timezone.utc).astimezone(local_tz)
+        hour = now_local.hour
+        day_of_week = now_local.weekday()
 
         occupancy_estimate = _hour_occupancy(hour, lot_type) * _day_scale(day_of_week, lot_type)
         occupancy_estimate = min(0.95, occupancy_estimate)
@@ -111,7 +125,7 @@ class HeuristicBaselineSignal(BaseSignal):
         return SignalResult(
             source=self.name,
             value=round(max(0.05, availability), 4),
-            confidence=0.35,
+            confidence=0.55,
             staleness_seconds=0.0,
             detail={
                 "lot_type": lot_type,
