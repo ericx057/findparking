@@ -29,12 +29,37 @@
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+[data-theme="light"] {
+    --bg-primary: #f2f1ee;
+    --bg-surface: #e8e7e3;
+    --bg-elevated: #deddd8;
+    --bg-input: #eceae6;
+
+    --text-primary: #1a1a1e;
+    --text-secondary: #52525a;
+    --text-dim: #9a9a9e;
+
+    --accent-green: #16a34a;
+    --accent-yellow: #b45309;
+    --accent-red: #dc2626;
+    --accent-stale: #71717a;
+
+    --border: #c8c7c2;
+    --border-subtle: #d8d7d2;
+}
+
 /* ---- Reset & Base ---- */
 
 *, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Exempt things that shouldn't transition */
+.leaflet-tile, .leaflet-control, svg, path, circle, line, .loader-bar::after {
+    transition: none !important;
 }
 
 html, body {
@@ -931,4 +956,61 @@ html, body {
 .rank-3 span {
     background: #86efac;
     color: #1a1a1e;
+}
+
+/* ---- Theme Toggle ---- */
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.theme-toggle:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+/* Light mode Leaflet overrides */
+[data-theme="light"] .leaflet-control-zoom a {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="light"] .leaflet-control-zoom a:hover {
+    background: var(--bg-elevated) !important;
+}
+
+[data-theme="light"] .leaflet-control-attribution {
+    background: rgba(242, 241, 238, 0.9) !important;
+    color: var(--text-dim) !important;
+}
+
+[data-theme="light"] .pin-tooltip {
+    background: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="light"] .ctx-popup-wrapper .leaflet-popup-content-wrapper {
+    background: var(--bg-surface) !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="light"] .ctx-popup-wrapper .leaflet-popup-tip {
+    background: var(--bg-surface) !important;
+}
+
+[data-theme="light"] .ctx-popup-wrapper .leaflet-popup-close-button {
+    color: var(--text-dim) !important;
 }

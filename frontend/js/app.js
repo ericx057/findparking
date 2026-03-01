@@ -12,11 +12,26 @@
     var geolocateBtn = document.getElementById('geolocate-btn');
     var filterPanel = document.getElementById('filter-panel');
     var filterToggle = document.getElementById('filter-toggle');
+    var themeToggleBtn = document.getElementById('theme-toggle');
+    var themeIconMoon = document.getElementById('theme-icon-moon');
+    var themeIconSun = document.getElementById('theme-icon-sun');
     var pollTimer = null;
     var lotsCache = {};
     var activeCity = 'waterloo';
     var cityConfigs = {};
     var userLocation = null; // { lat, lon, label }
+    var activeTheme = localStorage.getItem('fp-theme') || 'dark';
+
+    function applyTheme(theme) {
+        activeTheme = theme;
+        document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
+        localStorage.setItem('fp-theme', theme);
+        if (themeIconMoon && themeIconSun) {
+            themeIconMoon.style.display = theme === 'light' ? 'block' : 'none';
+            themeIconSun.style.display = theme === 'light' ? 'none' : 'block';
+        }
+        ParkingMap.setTheme(theme);
+    }
 
     function setOnline(online) {
         if (online) {
@@ -176,6 +191,23 @@
     }
 
     function init() {
+        // Apply saved theme before map init
+        if (activeTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            if (themeIconMoon) themeIconMoon.style.display = 'block';
+            if (themeIconSun) themeIconSun.style.display = 'none';
+        } else {
+            if (themeIconMoon) themeIconMoon.style.display = 'none';
+            if (themeIconSun) themeIconSun.style.display = 'block';
+        }
+
+        // Theme toggle button
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function () {
+                applyTheme(activeTheme === 'dark' ? 'light' : 'dark');
+            });
+        }
+
         // Initialize filters
         if (filterPanel && filterToggle) {
             Filters.init(filterPanel, filterToggle, handleFiltersChanged);
@@ -194,7 +226,7 @@
 
                 var center = config.center;
                 var zoom = config.zoom;
-                ParkingMap.initMap(center, zoom);
+                ParkingMap.initMap(center, zoom, activeTheme);
 
                 // Wire map click for pin-drop location
                 ParkingMap.enableMapClick(function (lat, lon) {
@@ -215,7 +247,7 @@
                 dismissLoader();
             })
             .catch(function () {
-                ParkingMap.initMap();
+                ParkingMap.initMap(null, null, activeTheme);
                 setOnline(false);
                 dismissLoader();
             });

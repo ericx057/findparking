@@ -1,12 +1,20 @@
 var ParkingMap = (function () {
     var map = null;
     var pinLayer = null;
+    var tileLayer = null;
     var markers = {};
     var lotDataCache = {};
     var rankMarkers = {};
     var userMarker = null;
     var userCircle = null;
     var mapClickCallback = null;
+
+    var TILE_URLS = {
+        dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    };
+
+    var TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
     var PIN_COLORS = {
         high: '#22c55e',
@@ -27,7 +35,7 @@ var ParkingMap = (function () {
     var FALLBACK_CENTER = [43.4643, -80.5204];
     var FALLBACK_ZOOM = 14;
 
-    function initMap(center, zoom) {
+    function initMap(center, zoom, theme) {
         var mapCenter = center || FALLBACK_CENTER;
         var mapZoom = zoom || FALLBACK_ZOOM;
 
@@ -37,8 +45,9 @@ var ParkingMap = (function () {
             zoomControl: true
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        var tileUrl = TILE_URLS[theme] || TILE_URLS.dark;
+        tileLayer = L.tileLayer(tileUrl, {
+            attribution: TILE_ATTRIBUTION,
             subdomains: 'abcd',
             maxZoom: 19
         }).addTo(map);
@@ -269,6 +278,17 @@ var ParkingMap = (function () {
         });
     }
 
+    function setTheme(theme) {
+        if (!map || !tileLayer) return;
+        var url = TILE_URLS[theme] || TILE_URLS.dark;
+        map.removeLayer(tileLayer);
+        tileLayer = L.tileLayer(url, {
+            attribution: TILE_ATTRIBUTION,
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+    }
+
     return {
         initMap: initMap,
         setView: setView,
@@ -280,6 +300,7 @@ var ParkingMap = (function () {
         enableMapClick: enableMapClick,
         updateRadius: updateRadius,
         updateRankings: updateRankings,
-        clearRankMarkers: clearRankMarkers
+        clearRankMarkers: clearRankMarkers,
+        setTheme: setTheme
     };
 })();
