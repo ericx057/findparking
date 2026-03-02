@@ -1,15 +1,61 @@
 import sqlite3
+import threading
 
 
-def get_connection(db_path: str) -> sqlite3.Connection:
+class ThreadSafeConnection:
+    """Wraps a sqlite3.Connection with a threading lock.
+
+    Serializes all execute/commit/cursor operations so that concurrent
+    threads (FastAPI handlers + APScheduler jobs) cannot interleave writes
+    on the same underlying connection.
+    """
+
+    def __init__(self, conn: sqlite3.Connection):
+        self._conn = conn
+        self._lock = threading.Lock()
+
+    def execute(self, sql, parameters=()):
+        with self._lock:
+            return self._conn.execute(sql, parameters)
+
+    def executemany(self, sql, seq_of_parameters):
+        with self._lock:
+            return self._conn.executemany(sql, seq_of_parameters)
+
+    def executescript(self, sql_script):
+        with self._lock:
+            return self._conn.executescript(sql_script)
+
+    def commit(self):
+        with self._lock:
+            return self._conn.commit()
+
+    def rollback(self):
+        with self._lock:
+            return self._conn.rollback()
+
+    def close(self):
+        with self._lock:
+            return self._conn.close()
+
+    @property
+    def row_factory(self):
+        return self._conn.row_factory
+
+    @row_factory.setter
+    def row_factory(self, value):
+        self._conn.row_factory = value
+
+
+def get_connection(db_path: str) -> ThreadSafeConnection:
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.row_factory = sqlite3.Row
-    return conn
+    return ThreadSafeConnection(conn)
 
 
-def initialize_schema(conn: sqlite3.Connection) -> None:
+def initialize_schema(conn) -> None:
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS parking_lots (
             lot_id TEXT PRIMARY KEY,

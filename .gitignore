@@ -7,5 +7,7 @@ build/
 venv/
 .env
 *.db
+*.db-wal
+*.db-shm
 .pytest_cache/
 *.pt

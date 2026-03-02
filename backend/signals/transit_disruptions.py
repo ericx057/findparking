@@ -8,7 +8,8 @@ Data source: TTC vehicle positions via NextBus/Umo XML feed.
 
 import logging
 import sqlite3
-from xml.etree import ElementTree
+
+from defusedxml import ElementTree
 
 import httpx
 

@@ -1,3 +1,6 @@
+import time
+import threading
+
 from fastapi import APIRouter, HTTPException, Request
 
 from backend.domain import VehicleEventCreate
@@ -12,8 +15,41 @@ from backend.vehicle_event_store import record_event
 router = APIRouter(prefix="/api", tags=["vehicle_events"])
 
 
+class _RateLimiter:
+    """Simple per-IP token bucket rate limiter.
+
+    Allows `max_tokens` requests per `refill_seconds` window per client IP.
+    """
+
+    def __init__(self, max_tokens: int = 30, refill_seconds: float = 60.0):
+        self._max_tokens = max_tokens
+        self._refill_seconds = refill_seconds
+        self._buckets: dict[str, tuple[float, float]] = {}  # ip -> (tokens, last_refill)
+        self._lock = threading.Lock()
+
+    def allow(self, client_ip: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            tokens, last_refill = self._buckets.get(client_ip, (self._max_tokens, now))
+            elapsed = now - last_refill
+            tokens = min(self._max_tokens, tokens + elapsed * (self._max_tokens / self._refill_seconds))
+            last_refill = now
+            if tokens >= 1.0:
+                self._buckets[client_ip] = (tokens - 1.0, last_refill)
+                return True
+            self._buckets[client_ip] = (tokens, last_refill)
+            return False
+
+
+_event_limiter = _RateLimiter(max_tokens=30, refill_seconds=60.0)
+
+
 @router.post("/lots/{lot_id}/events", status_code=201)
 def post_vehicle_event(lot_id: str, event: VehicleEventCreate, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    if not _event_limiter.allow(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
     conn = request.app.state.db_conn
 
     lot = get_lot(conn, lot_id)

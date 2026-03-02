@@ -32,6 +32,16 @@ var ParkingMap = (function () {
         'road_disruptions': 'ROAD'
     };
 
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     var FALLBACK_CENTER = [43.4643, -80.5204];
     var FALLBACK_ZOOM = 14;
 
@@ -91,7 +101,7 @@ var ParkingMap = (function () {
         var signals = '--';
         if (lot.signals_used && lot.signals_used.length > 0) {
             signals = lot.signals_used.map(function (s) {
-                return '<span class="ctx-signal-tag">' + (SIGNAL_LABELS[s] || s.toUpperCase()) + '</span>';
+                return '<span class="ctx-signal-tag">' + escapeHtml(SIGNAL_LABELS[s] || s.toUpperCase()) + '</span>';
             }).join(' ');
         }
         var trendText = lot.trend ? lot.trend.toUpperCase() : 'STABLE';
@@ -111,15 +121,18 @@ var ParkingMap = (function () {
         var occ = lot.current_occupancy != null ? lot.current_occupancy : '?';
         var cap = lot.capacity != null ? lot.capacity : '?';
 
+        var safeName = escapeHtml(lot.name || '--');
+        var safeAvailClass = escapeHtml(lot.availability || 'stale');
+
         return '<div class="ctx-popup">' +
-            '<div class="ctx-header">' + (lot.name || '--') + '</div>' +
-            '<div class="ctx-row"><span class="ctx-label">PROBABILITY</span><span class="ctx-value">' + pct + '</span></div>' +
-            '<div class="ctx-row"><span class="ctx-label">CONFIDENCE</span><span class="ctx-value">' + conf + '</span></div>' +
-            '<div class="ctx-row"><span class="ctx-label">AVAILABILITY</span><span class="ctx-value ctx-avail-' + (lot.availability || 'stale') + '">' + avail + '</span></div>' +
-            '<div class="ctx-row"><span class="ctx-label">TREND</span><span class="ctx-value ' + trendClass + '">' + trendText + '</span></div>' +
-            '<div class="ctx-row"><span class="ctx-label">OCCUPANCY</span><span class="ctx-value">' + occ + ' / ' + cap + '</span></div>' +
-            '<div class="ctx-row"><span class="ctx-label">PREDICTED</span><span class="ctx-value">' + predicted + '</span></div>' +
-            '<div class="ctx-row"><span class="ctx-label">UPDATED</span><span class="ctx-value">' + freshness + '</span></div>' +
+            '<div class="ctx-header">' + safeName + '</div>' +
+            '<div class="ctx-row"><span class="ctx-label">PROBABILITY</span><span class="ctx-value">' + escapeHtml(pct) + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">CONFIDENCE</span><span class="ctx-value">' + escapeHtml(conf) + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">AVAILABILITY</span><span class="ctx-value ctx-avail-' + safeAvailClass + '">' + escapeHtml(avail) + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">TREND</span><span class="ctx-value ' + trendClass + '">' + escapeHtml(trendText) + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">OCCUPANCY</span><span class="ctx-value">' + escapeHtml(occ + ' / ' + cap) + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">PREDICTED</span><span class="ctx-value">' + escapeHtml(predicted) + '</span></div>' +
+            '<div class="ctx-row"><span class="ctx-label">UPDATED</span><span class="ctx-value">' + escapeHtml(freshness) + '</span></div>' +
             '<div class="ctx-row ctx-signals-row"><span class="ctx-label">SIGNALS</span><span class="ctx-value">' + signals + '</span></div>' +
             '</div>';
     }
@@ -172,7 +185,7 @@ var ParkingMap = (function () {
                     });
                 })(lot.lot_id);
 
-                marker.bindTooltip(lot.name, {
+                marker.bindTooltip(escapeHtml(lot.name), {
                     permanent: false,
                     direction: 'top',
                     className: 'pin-tooltip',
@@ -262,7 +275,7 @@ var ParkingMap = (function () {
         clearRankMarkers();
         rankedLots.forEach(function (entry) {
             var lot = entry.lot;
-            var rank = entry.rank;
+            var rank = parseInt(entry.rank, 10) || 0;
             var icon = L.divIcon({
                 className: 'rank-badge rank-' + rank,
                 html: '<span>#' + rank + '</span>',
