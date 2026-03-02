@@ -110,7 +110,7 @@
                 radiusKm, SEARCH_LIMIT, filterState
             );
         } else {
-            fetchPromise = ParkingAPI.fetchAllLots(activeCity);
+            fetchPromise = ParkingAPI.fetchAllLots(activeCity, Filters.getState());
         }
 
         fetchPromise
@@ -147,12 +147,12 @@
     }
 
     function handleFiltersChanged() {
+        lotsCache = {};
+        ParkingMap.clearPins();
         if (userLocation) {
-            lotsCache = {};
-            ParkingMap.clearPins();
             ParkingMap.updateRadius(Filters.getRadius());
-            pollLots();
         }
+        pollLots();
     }
 
     function clearLocationSearch() {
@@ -236,7 +236,7 @@
                     handleLocationSelected(lat, lon, 'Dropped pin');
                 });
 
-                return ParkingAPI.fetchAllLots(activeCity);
+                return ParkingAPI.fetchAllLots(activeCity, Filters.getState());
             })
             .then(function (lots) {
                 setOnline(true);

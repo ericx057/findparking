@@ -10,7 +10,9 @@ var Filters = (function () {
         max_hourly_rate: null,
         is_covered: null,
         is_multi_level: null,
-        is_above_ground: null
+        is_above_ground: null,
+        min_confidence: null,
+        min_probability: null
     };
 
     function init(panelEl, toggleBtnEl, callback) {
@@ -62,6 +64,30 @@ var Filters = (function () {
         bindToggle('filter-multi-level', 'is_multi_level');
         bindToggle('filter-above-ground', 'is_above_ground');
 
+        // Min confidence slider
+        var confSlider = document.getElementById('filter-min-confidence');
+        var confLabel = document.getElementById('filter-min-confidence-label');
+        if (confSlider) {
+            confSlider.addEventListener('input', function () {
+                var val = parseFloat(confSlider.value);
+                state.min_confidence = val > 0 ? val : null;
+                if (confLabel) confLabel.textContent = Math.round(val * 100) + '%';
+                fireChanged();
+            });
+        }
+
+        // Min probability slider
+        var probSlider = document.getElementById('filter-min-probability');
+        var probLabel = document.getElementById('filter-min-probability-label');
+        if (probSlider) {
+            probSlider.addEventListener('input', function () {
+                var val = parseFloat(probSlider.value);
+                state.min_probability = val > 0 ? val : null;
+                if (probLabel) probLabel.textContent = Math.round(val * 100) + '%';
+                fireChanged();
+            });
+        }
+
         // Reset button
         var resetBtn = document.getElementById('filter-reset');
         if (resetBtn) {
@@ -95,7 +121,9 @@ var Filters = (function () {
             max_hourly_rate: state.max_hourly_rate,
             is_covered: state.is_covered,
             is_multi_level: state.is_multi_level,
-            is_above_ground: state.is_above_ground
+            is_above_ground: state.is_above_ground,
+            min_confidence: state.min_confidence,
+            min_probability: state.min_probability
         };
     }
 
@@ -110,7 +138,9 @@ var Filters = (function () {
             max_hourly_rate: null,
             is_covered: null,
             is_multi_level: null,
-            is_above_ground: null
+            is_above_ground: null,
+            min_confidence: null,
+            min_probability: null
         };
 
         // Reset UI elements
@@ -132,6 +162,16 @@ var Filters = (function () {
             var el = document.getElementById(id);
             if (el) el.checked = false;
         });
+
+        var confSlider = document.getElementById('filter-min-confidence');
+        var confLabel = document.getElementById('filter-min-confidence-label');
+        if (confSlider) { confSlider.value = '0'; }
+        if (confLabel) { confLabel.textContent = '0%'; }
+
+        var probSlider = document.getElementById('filter-min-probability');
+        var probLabel = document.getElementById('filter-min-probability-label');
+        if (probSlider) { probSlider.value = '0'; }
+        if (probLabel) { probLabel.textContent = '0%'; }
 
         fireChanged();
     }

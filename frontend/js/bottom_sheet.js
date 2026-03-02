@@ -100,11 +100,20 @@ var BottomSheet = (function () {
         if (!lot.signals_used || lot.signals_used.length === 0) return '--';
         var labels = {
             'camera': 'CAM',
+            'demand_heatmap': 'HEAT',
             'heuristic_baseline': 'EST',
             'sports_event': 'EVENT',
             'weather': 'WX',
             'time_weights': 'TIME',
             'road_disruptions': 'ROAD',
+            'bikeshare': 'BIKE',
+            'transit_disruption': 'TTC',
+            'festival_event': 'FEST',
+            'air_quality': 'AQI',
+            'holiday_calendar': 'HOL',
+            'economic_climate': 'ECON',
+            'construction_proximity': 'CONST',
+            'wind_exposure': 'WIND',
         };
         return lot.signals_used.map(function (s) {
             return labels[s] || s.toUpperCase();
@@ -131,8 +140,10 @@ var BottomSheet = (function () {
 
         walking.textContent = computeWalkingEta(lot);
 
-        var conf = lot.confidence_range || null;
-        confidence.textContent = conf ? conf : '--';
+        var conf = lot.confidence_score != null
+            ? Math.round(lot.confidence_score * 100) + '%'
+            : (lot.confidence_range || '--');
+        confidence.textContent = conf;
 
         updated.textContent = formatUpdated(lot.freshness_seconds);
 

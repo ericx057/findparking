@@ -2,7 +2,10 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+import logging
 import sqlite3
+
+logger = logging.getLogger("findparking.signals")
 
 
 @dataclass
@@ -38,3 +41,22 @@ class BaseSignal(ABC):
 
         Returns SignalResult if the signal has data, None if unavailable.
         """
+
+
+def get_signal_param(
+    conn: sqlite3.Connection, signal_name: str, key: str, default: float,
+) -> float:
+    """Read a configurable parameter from signal_params table.
+
+    Falls back to the provided default if the table doesn't exist,
+    the row is missing, or any error occurs.
+    """
+    try:
+        row = conn.execute(
+            "SELECT param_value FROM signal_params "
+            "WHERE signal_name = ? AND param_key = ?",
+            (signal_name, key),
+        ).fetchone()
+        return row[0] if row else default
+    except Exception:
+        return default

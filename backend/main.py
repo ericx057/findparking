@@ -10,7 +10,11 @@ from backend.config import ParkingFinderSettings
 from backend.database import get_connection, initialize_schema
 from backend.middleware.request_logger import RequestLoggerMiddleware
 from backend.nightly_purge import purge_all_lots
-from backend.signal_scheduler import register_signal_jobs, refresh_weather, refresh_sports_events
+from backend.signal_scheduler import (
+    register_signal_jobs, refresh_weather, refresh_sports_events, refresh_lot_probabilities,
+    refresh_team_streaks, refresh_air_quality, refresh_construction, refresh_holidays,
+    refresh_economic_indicators,
+)
 from backend.routes.health import router as health_router
 from backend.routes.parking_lots import router as lots_router
 from backend.routes.vehicle_events import router as events_router
@@ -82,6 +86,45 @@ def create_app(db_path: str | None = None) -> FastAPI:
             refresh_osm_demand_nodes(conn)
         except Exception:
             logger.warning("initial demand node fetch failed, will retry on schedule")
+        try:
+            from backend.signals.bikeshare import refresh_bikeshare
+            refresh_bikeshare(conn)
+        except Exception:
+            logger.warning("initial bikeshare fetch failed, will retry on schedule")
+        try:
+            from backend.signals.transit_disruptions import refresh_transit_alerts
+            refresh_transit_alerts(conn)
+        except Exception:
+            logger.warning("initial transit alerts fetch failed, will retry on schedule")
+        try:
+            from backend.signals.festival_events import refresh_festival_events
+            refresh_festival_events(conn)
+        except Exception:
+            logger.warning("initial festival events fetch failed, will retry on schedule")
+        try:
+            refresh_team_streaks(conn)
+        except Exception:
+            logger.warning("initial team streaks fetch failed, will retry on schedule")
+        try:
+            refresh_lot_probabilities(conn)
+        except Exception:
+            logger.warning("initial probability refresh failed, will retry on schedule")
+        try:
+            refresh_air_quality(conn)
+        except Exception:
+            logger.warning("initial air quality fetch failed, will retry on schedule")
+        try:
+            refresh_construction(conn)
+        except Exception:
+            logger.warning("initial construction fetch failed, will retry on schedule")
+        try:
+            refresh_holidays(conn)
+        except Exception:
+            logger.warning("initial holidays fetch failed, will retry on schedule")
+        try:
+            refresh_economic_indicators(conn)
+        except Exception:
+            logger.warning("initial economic indicators fetch failed, will retry on schedule")
 
     # Mount frontend static files last (catch-all)
     frontend_dir = Path(__file__).parent.parent / "frontend"

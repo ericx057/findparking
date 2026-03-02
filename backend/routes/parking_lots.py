@@ -16,6 +16,20 @@ from backend.vehicle_event_store import get_recent_event_count
 router = APIRouter(prefix="/api", tags=["parking_lots"])
 
 
+def _compute_aggregate_confidence(estimate) -> float | None:
+    """Compute weighted average confidence from signal details.
+
+    Returns sum(weight * confidence) / sum(weight), or None if no signals.
+    """
+    if not estimate.signal_details:
+        return None
+    total_wc = sum(d["weight"] * d["confidence"] for d in estimate.signal_details)
+    total_w = sum(d["weight"] for d in estimate.signal_details)
+    if total_w <= 0:
+        return None
+    return round(total_wc / total_w, 4)
+
+
 def _compute_lot_response(lot, conn) -> dict:
     """Build a lot response dict with computed probability fields."""
     capacity = lot["capacity"]
@@ -30,6 +44,9 @@ def _compute_lot_response(lot, conn) -> dict:
     )
     probability_score = estimate.score
     availability = classify_availability(probability_score)
+
+    # Aggregate confidence: weighted average of signal confidences
+    confidence_score = _compute_aggregate_confidence(estimate)
 
     # Freshness: seconds since last update
     freshness_seconds = None
@@ -88,6 +105,7 @@ def _compute_lot_response(lot, conn) -> dict:
         "current_occupancy": occupancy,
         "vacancy_ratio": round(vacancy_ratio, 4),
         "probability_score": round(probability_score, 4),
+        "confidence_score": confidence_score,
         "availability": availability,
         "pin_color": pin_color,
         "predicted_probability": predicted_probability,
@@ -105,13 +123,26 @@ def _compute_lot_response(lot, conn) -> dict:
 
 
 @router.get("/lots")
-def list_lots(request: Request, city: str | None = Query(default=None)):
+def list_lots(
+    request: Request,
+    city: str | None = Query(default=None),
+    min_confidence: float | None = Query(default=None, ge=0.0, le=1.0),
+    min_probability: float | None = Query(default=None, ge=0.0, le=1.0),
+):
     conn = request.app.state.db_conn
     if city:
         lots = get_lots_by_city(conn, city)
     else:
         lots = get_all_lots(conn)
-    return [_compute_lot_response(lot, conn) for lot in lots]
+    results = [_compute_lot_response(lot, conn) for lot in lots]
+
+    if min_confidence is not None:
+        results = [r for r in results if r.get("confidence_score") is not None
+                   and r["confidence_score"] >= min_confidence]
+    if min_probability is not None:
+        results = [r for r in results if r["probability_score"] >= min_probability]
+
+    return results
 
 
 @router.get("/lots/nearby")
@@ -126,6 +157,8 @@ def list_lots_nearby(
     is_covered: bool | None = Query(default=None),
     is_multi_level: bool | None = Query(default=None),
     is_above_ground: bool | None = Query(default=None),
+    min_confidence: float | None = Query(default=None, ge=0.0, le=1.0),
+    min_probability: float | None = Query(default=None, ge=0.0, le=1.0),
 ):
     conn = request.app.state.db_conn
     lots = get_lots_nearby(
@@ -145,6 +178,13 @@ def list_lots_nearby(
         response["distance_km"] = distance_km
         response["walking_minutes"] = round((distance_km / 5.0) * 60)
         results.append(response)
+
+    if min_confidence is not None:
+        results = [r for r in results if r.get("confidence_score") is not None
+                   and r["confidence_score"] >= min_confidence]
+    if min_probability is not None:
+        results = [r for r in results if r["probability_score"] >= min_probability]
+
     return results
 
 

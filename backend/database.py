@@ -146,4 +146,145 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
             ON signal_audit_log(lot_id, timestamp);
         CREATE INDEX IF NOT EXISTS idx_demand_nodes_city
             ON cached_demand_nodes(city);
+
+        CREATE TABLE IF NOT EXISTS cached_bikeshare_stations (
+            station_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            name TEXT,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            capacity INTEGER NOT NULL,
+            num_bikes_available INTEGER NOT NULL,
+            num_docks_available INTEGER NOT NULL,
+            last_reported INTEGER NOT NULL,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_bikeshare_city
+            ON cached_bikeshare_stations(city);
+
+        CREATE TABLE IF NOT EXISTS cached_transit_alerts (
+            alert_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            agency TEXT NOT NULL,
+            route_id TEXT,
+            description TEXT,
+            severity TEXT NOT NULL DEFAULT 'moderate',
+            lat REAL,
+            lon REAL,
+            start_time TEXT,
+            end_time TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_transit_alerts_city
+            ON cached_transit_alerts(city);
+
+        CREATE TABLE IF NOT EXISTS cached_sun_times (
+            city TEXT NOT NULL,
+            date TEXT NOT NULL,
+            sunrise TEXT NOT NULL,
+            sunset TEXT NOT NULL,
+            civil_twilight_begin TEXT,
+            civil_twilight_end TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (city, date)
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_festival_events (
+            event_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            event_name TEXT NOT NULL,
+            category TEXT,
+            lat REAL,
+            lon REAL,
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            location_name TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_festival_events_city_date
+            ON cached_festival_events(city, start_date);
+
+        CREATE TABLE IF NOT EXISTS cached_team_streaks (
+            team_abbrev TEXT PRIMARY KEY,
+            league TEXT NOT NULL,
+            streak_code TEXT NOT NULL,
+            streak_count INTEGER NOT NULL DEFAULT 0,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS signal_params (
+            signal_name TEXT NOT NULL,
+            param_key TEXT NOT NULL,
+            param_value REAL NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (signal_name, param_key)
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_air_quality (
+            city TEXT PRIMARY KEY,
+            us_aqi INTEGER,
+            pm2_5 REAL,
+            pm10 REAL,
+            observed_at TEXT NOT NULL,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_pressure_history (
+            city TEXT NOT NULL,
+            observed_at TEXT NOT NULL,
+            pressure_hpa REAL NOT NULL,
+            PRIMARY KEY (city, observed_at)
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_economic_indicators (
+            indicator TEXT PRIMARY KEY,
+            value REAL NOT NULL,
+            period TEXT NOT NULL,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_holidays (
+            date TEXT NOT NULL,
+            country_code TEXT NOT NULL DEFAULT 'CA',
+            name TEXT NOT NULL,
+            is_global INTEGER NOT NULL DEFAULT 0,
+            provinces TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (date, name)
+        );
+
+        CREATE TABLE IF NOT EXISTS cached_construction (
+            project_id TEXT PRIMARY KEY,
+            city TEXT NOT NULL,
+            description TEXT,
+            lat REAL NOT NULL,
+            lon REAL NOT NULL,
+            status TEXT,
+            start_year INTEGER,
+            geometry_type TEXT,
+            geometry_json TEXT,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_construction_city
+            ON cached_construction(city);
+
+        CREATE TABLE IF NOT EXISTS cached_geomagnetic (
+            observed_at TEXT PRIMARY KEY,
+            kp_index REAL NOT NULL,
+            fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
     """)
+
+    # Add weather micro-effect columns (idempotent via try/except)
+    for col_stmt in [
+        "ALTER TABLE cached_weather ADD COLUMN apparent_temp_celsius REAL",
+        "ALTER TABLE cached_weather ADD COLUMN uv_index REAL",
+        "ALTER TABLE cached_weather ADD COLUMN precip_probability_pct REAL",
+        "ALTER TABLE cached_weather ADD COLUMN weather_code INTEGER",
+        "ALTER TABLE cached_weather ADD COLUMN surface_pressure_hpa REAL",
+        "ALTER TABLE cached_weather ADD COLUMN wind_gusts_kph REAL",
+    ]:
+        try:
+            conn.execute(col_stmt)
+        except sqlite3.OperationalError:
+            pass  # Column already exists

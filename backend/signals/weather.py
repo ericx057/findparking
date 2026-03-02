@@ -1,4 +1,8 @@
-"""Weather signal: Environment Canada conditions mapped to availability multipliers."""
+"""Weather signal: conditions mapped to availability multipliers.
+
+Uses Open-Meteo WMO weather codes and enhanced micro-effect modifiers
+(UV index, precipitation probability, apparent temperature).
+"""
 
 import logging
 import sqlite3
@@ -8,7 +12,7 @@ from backend.signals import BaseSignal, SignalResult
 
 logger = logging.getLogger("findparking.signals.weather")
 
-# --- Condition classification ---
+# --- Condition classification (Environment Canada text) ---
 
 _CLEAR_KEYWORDS = ("sunny", "clear", "fair")
 _CLOUDY_KEYWORDS = ("cloudy", "overcast")
@@ -49,6 +53,40 @@ def classify_condition(raw_condition: str) -> str:
     return "clear"  # default for unknown conditions
 
 
+# --- WMO weather code classification (Open-Meteo) ---
+
+_WMO_CODE_MAP = {
+    # Clear / partly cloudy
+    0: "clear", 1: "clear",
+    # Cloudy
+    2: "cloudy", 3: "cloudy",
+    # Fog
+    45: "cloudy", 48: "cloudy",
+    # Drizzle / light rain
+    51: "rain", 53: "rain", 55: "rain",
+    56: "ice", 57: "ice",  # freezing drizzle
+    # Rain
+    61: "rain", 63: "rain",
+    65: "heavy_rain",
+    66: "ice", 67: "ice",  # freezing rain
+    # Snow
+    71: "snow", 73: "snow",
+    75: "heavy_snow",
+    77: "snow",  # snow grains
+    # Showers
+    80: "rain", 81: "rain", 82: "heavy_rain",
+    # Snow showers
+    85: "snow", 86: "heavy_snow",
+    # Thunderstorm
+    95: "heavy_rain", 96: "heavy_rain", 99: "heavy_rain",
+}
+
+
+def classify_wmo_code(code: int) -> str:
+    """Map a WMO integer weather code to a canonical condition category."""
+    return _WMO_CODE_MAP.get(code, "clear")
+
+
 # --- Multiplier tables ---
 
 _CONDITION_MULTIPLIERS = {
@@ -80,6 +118,37 @@ def temperature_modifier(temp_celsius: float | None) -> float:
     return 1.00
 
 
+def uv_modifier(uv_index: float | None) -> float:
+    """UV >= 8 drives preference for covered parking."""
+    if uv_index is None:
+        return 1.0
+    if uv_index >= 8:
+        return 0.92
+    return 1.0
+
+
+def precip_probability_modifier(pct: float | None) -> float:
+    """High precipitation probability causes behavioral preemption."""
+    if pct is None:
+        return 1.0
+    if pct >= 80:
+        return 0.93
+    return 1.0
+
+
+def apparent_temp_modifier(apparent_temp: float | None) -> float:
+    """Wind chill / heat index extremes affect parking behavior."""
+    if apparent_temp is None:
+        return 1.0
+    if apparent_temp < -20:
+        return 0.85
+    if apparent_temp < -10:
+        return 0.92
+    if apparent_temp > 40:
+        return 0.90
+    return 1.0
+
+
 # --- Staleness thresholds ---
 
 _MAX_AGE_SECONDS = 4 * 3600  # 4 hours = too stale, discard
@@ -99,7 +168,7 @@ def _weather_confidence(staleness_seconds: float) -> float:
     return 0.40
 
 
-# --- Environment Canada feed URLs ---
+# --- Environment Canada feed URLs (kept for reference) ---
 
 WEATHER_FEEDS = {
     "toronto": {"province": "ON", "station": "s0000458"},
@@ -112,7 +181,7 @@ _WEATHER_BASE_URL = "https://hpfx.collab.science.gc.ca/today/citypage_weather"
 
 class WeatherSignal(BaseSignal):
     name = "weather"
-    base_weight = 0.07
+    base_weight = 0.08
 
     def evaluate(
         self,
@@ -126,7 +195,8 @@ class WeatherSignal(BaseSignal):
     ) -> SignalResult | None:
         """Look up latest cached weather for this city and compute availability."""
         row = conn.execute(
-            "SELECT condition, temp_celsius, observed_at "
+            "SELECT condition, temp_celsius, observed_at, "
+            "apparent_temp_celsius, uv_index, precip_probability_pct "
             "FROM cached_weather "
             "WHERE city = ? "
             "ORDER BY observed_at DESC LIMIT 1",
@@ -150,13 +220,16 @@ class WeatherSignal(BaseSignal):
         condition = classify_condition(row["condition"])
         cond_mult = condition_multiplier(condition)
         temp_mod = temperature_modifier(row["temp_celsius"])
+        uv_mod = uv_modifier(row["uv_index"])
+        precip_mod = precip_probability_modifier(row["precip_probability_pct"])
+        apparent_mod = apparent_temp_modifier(row["apparent_temp_celsius"])
 
-        # Normal conditions (clear/cloudy + mild temp) provide no signal.
+        # Normal conditions (all multipliers at 1.0) provide no signal.
         # Weather only fires when conditions actively affect parking behavior.
-        if cond_mult >= 1.0 and temp_mod >= 1.0:
+        if cond_mult >= 1.0 and temp_mod >= 1.0 and uv_mod >= 1.0 and precip_mod >= 1.0 and apparent_mod >= 1.0:
             return None
 
-        value = cond_mult * temp_mod
+        value = cond_mult * temp_mod * uv_mod * precip_mod * apparent_mod
         confidence = _weather_confidence(staleness)
 
         return SignalResult(
@@ -170,5 +243,8 @@ class WeatherSignal(BaseSignal):
                 "temp_celsius": row["temp_celsius"],
                 "condition_multiplier": cond_mult,
                 "temperature_modifier": temp_mod,
+                "uv_modifier": uv_mod,
+                "precip_probability_modifier": precip_mod,
+                "apparent_temp_modifier": apparent_mod,
             },
         )

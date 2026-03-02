@@ -40,6 +40,27 @@ VENUES = {
     },
 }
 
+# --- Team abbreviation to venue mapping for streak lookup ---
+
+_TEAM_VENUE_MAP = {
+    # NHL
+    "TOR": "scotiabank_arena",
+    "VAN": "rogers_arena",
+    # MLB
+    "TOR-MLB": "rogers_centre",
+    # NBA
+    "TOR-NBA": "scotiabank_arena",
+}
+
+# keywords in event_name to map to team abbreviations
+_EVENT_TEAM_PATTERNS = {
+    "Maple Leafs": "TOR",
+    "Toronto": "TOR",       # NHL context
+    "Canucks": "VAN",
+    "Blue Jays": "TOR-MLB",
+    "Raptors": "TOR-NBA",
+}
+
 # --- Decay functions ---
 
 _DISTANCE_HALF_LIFE_KM = 0.8
@@ -112,6 +133,54 @@ _EVENT_WINDOW_HOURS_BEFORE = 4
 _EVENT_WINDOW_HOURS_AFTER = 2
 
 
+def streak_multiplier(conn: sqlite3.Connection, event_name: str) -> float:
+    """Look up team streak and return an impact multiplier.
+
+    Win streak 5+: 1.15 (more excitement, more fans attend)
+    Win streak 3-4: 1.08
+    Loss streak 5+: 0.88 (fewer fans, less parking demand)
+    Loss streak 3-4: 0.94
+    Otherwise: 1.0
+    """
+    if not event_name:
+        return 1.0
+
+    # Identify team abbreviation from event name
+    team_abbrev = None
+    upper_name = event_name.upper()
+    for keyword, abbrev in _EVENT_TEAM_PATTERNS.items():
+        if keyword.upper() in upper_name:
+            team_abbrev = abbrev
+            break
+
+    if team_abbrev is None:
+        return 1.0
+
+    row = conn.execute(
+        "SELECT streak_code, streak_count FROM cached_team_streaks WHERE team_abbrev = ?",
+        (team_abbrev,),
+    ).fetchone()
+
+    if row is None:
+        return 1.0
+
+    code = (row["streak_code"] or "").upper()
+    count = row["streak_count"] or 0
+
+    if code == "W":
+        if count >= 5:
+            return 1.15
+        if count >= 3:
+            return 1.08
+    elif code == "L":
+        if count >= 5:
+            return 0.88
+        if count >= 3:
+            return 0.94
+
+    return 1.0
+
+
 class SportsEventSignal(BaseSignal):
     name = "sports_event"
     base_weight = 0.12
@@ -170,6 +239,10 @@ class SportsEventSignal(BaseSignal):
         if max_impact < 0.01:
             return None
 
+        # Apply streak multiplier from cached team streaks
+        s_mult = streak_multiplier(conn, best_event) if best_event else 1.0
+        max_impact = min(0.95, max_impact * s_mult)
+
         # Availability = 1.0 - impact (clamped)
         availability = max(0.05, 1.0 - max_impact)
 
@@ -181,5 +254,6 @@ class SportsEventSignal(BaseSignal):
             detail={
                 "event": best_event,
                 "impact": round(max_impact, 4),
+                "streak_multiplier": s_mult,
             },
         )

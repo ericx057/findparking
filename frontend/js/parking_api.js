@@ -13,10 +13,15 @@ var ParkingAPI = (function () {
             .then(handleResponse);
     }
 
-    function fetchAllLots(city) {
+    function fetchAllLots(city, filters) {
         var url = BASE_URL + '/lots';
         if (city) {
             url += '?city=' + encodeURIComponent(city);
+        }
+        if (filters) {
+            var sep = url.indexOf('?') === -1 ? '?' : '&';
+            if (filters.min_confidence != null) { url += sep + 'min_confidence=' + filters.min_confidence; sep = '&'; }
+            if (filters.min_probability != null) { url += sep + 'min_probability=' + filters.min_probability; sep = '&'; }
         }
         return fetch(url)
             .then(handleResponse);
@@ -37,6 +42,8 @@ var ParkingAPI = (function () {
             if (filters.is_covered != null) url += '&is_covered=' + filters.is_covered;
             if (filters.is_multi_level != null) url += '&is_multi_level=' + filters.is_multi_level;
             if (filters.is_above_ground != null) url += '&is_above_ground=' + filters.is_above_ground;
+            if (filters.min_confidence != null) url += '&min_confidence=' + filters.min_confidence;
+            if (filters.min_probability != null) url += '&min_probability=' + filters.min_probability;
         }
         return fetch(url)
             .then(handleResponse);

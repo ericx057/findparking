@@ -108,6 +108,16 @@
                 <span class="toggle-text">ABOVE GROUND</span>
             </label>
         </div>
+        <div class="filter-group">
+            <label class="filter-label" for="filter-min-confidence">MIN CONFIDENCE</label>
+            <input type="range" id="filter-min-confidence" class="filter-slider" min="0" max="1" step="0.05" value="0" />
+            <span class="filter-range-label" id="filter-min-confidence-label">0%</span>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label" for="filter-min-probability">MIN PROBABILITY</label>
+            <input type="range" id="filter-min-probability" class="filter-slider" min="0" max="1" step="0.05" value="0" />
+            <span class="filter-range-label" id="filter-min-probability-label">0%</span>
+        </div>
         <button id="filter-reset" class="filter-reset-btn">RESET</button>
     </div>
 
