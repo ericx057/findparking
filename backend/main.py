@@ -1,4 +1,5 @@
 import logging
+import threading
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -21,6 +22,44 @@ from backend.routes.vehicle_events import router as events_router
 from backend.routes.city_config import router as config_router
 
 logger = logging.getLogger("findparking")
+
+
+def _initial_data_fetch(conn) -> None:
+    """Best-effort startup data fetch. Runs in a daemon thread so the server
+    can start accepting requests immediately. Every signal already returns
+    None when its cache table is empty, so stale/missing data at startup is
+    handled gracefully.
+    """
+    fetches = [
+        ("weather", lambda: refresh_weather(conn)),
+        ("sports_events", lambda: refresh_sports_events(conn)),
+        ("demand_nodes", lambda: __import__(
+            "backend.signals.demand_heatmap", fromlist=["refresh_osm_demand_nodes"]
+        ).refresh_osm_demand_nodes(conn)),
+        ("bikeshare", lambda: __import__(
+            "backend.signals.bikeshare", fromlist=["refresh_bikeshare"]
+        ).refresh_bikeshare(conn)),
+        ("transit_alerts", lambda: __import__(
+            "backend.signals.transit_disruptions", fromlist=["refresh_transit_alerts"]
+        ).refresh_transit_alerts(conn)),
+        ("festival_events", lambda: __import__(
+            "backend.signals.festival_events", fromlist=["refresh_festival_events"]
+        ).refresh_festival_events(conn)),
+        ("team_streaks", lambda: refresh_team_streaks(conn)),
+        ("lot_probabilities", lambda: refresh_lot_probabilities(conn)),
+        ("air_quality", lambda: refresh_air_quality(conn)),
+        ("construction", lambda: refresh_construction(conn)),
+        ("holidays", lambda: refresh_holidays(conn)),
+        ("economic_indicators", lambda: refresh_economic_indicators(conn)),
+    ]
+
+    for name, fetch_fn in fetches:
+        try:
+            fetch_fn()
+        except Exception:
+            logger.warning("initial %s fetch failed, will retry on schedule", name)
+
+    logger.info("startup data fetch complete")
 
 
 def create_app(db_path: str | None = None) -> FastAPI:
@@ -72,59 +111,11 @@ def create_app(db_path: str | None = None) -> FastAPI:
         # Register signal refresh jobs
         register_signal_jobs(scheduler, conn, ticketmaster_api_key=settings.ticketmaster_api_key)
 
-        # Initial data fetch on startup (best-effort)
-        try:
-            refresh_weather(conn)
-        except Exception:
-            logger.warning("initial weather fetch failed, will retry on schedule")
-        try:
-            refresh_sports_events(conn)
-        except Exception:
-            logger.warning("initial sports fetch failed, will retry on schedule")
-        try:
-            from backend.signals.demand_heatmap import refresh_osm_demand_nodes
-            refresh_osm_demand_nodes(conn)
-        except Exception:
-            logger.warning("initial demand node fetch failed, will retry on schedule")
-        try:
-            from backend.signals.bikeshare import refresh_bikeshare
-            refresh_bikeshare(conn)
-        except Exception:
-            logger.warning("initial bikeshare fetch failed, will retry on schedule")
-        try:
-            from backend.signals.transit_disruptions import refresh_transit_alerts
-            refresh_transit_alerts(conn)
-        except Exception:
-            logger.warning("initial transit alerts fetch failed, will retry on schedule")
-        try:
-            from backend.signals.festival_events import refresh_festival_events
-            refresh_festival_events(conn)
-        except Exception:
-            logger.warning("initial festival events fetch failed, will retry on schedule")
-        try:
-            refresh_team_streaks(conn)
-        except Exception:
-            logger.warning("initial team streaks fetch failed, will retry on schedule")
-        try:
-            refresh_lot_probabilities(conn)
-        except Exception:
-            logger.warning("initial probability refresh failed, will retry on schedule")
-        try:
-            refresh_air_quality(conn)
-        except Exception:
-            logger.warning("initial air quality fetch failed, will retry on schedule")
-        try:
-            refresh_construction(conn)
-        except Exception:
-            logger.warning("initial construction fetch failed, will retry on schedule")
-        try:
-            refresh_holidays(conn)
-        except Exception:
-            logger.warning("initial holidays fetch failed, will retry on schedule")
-        try:
-            refresh_economic_indicators(conn)
-        except Exception:
-            logger.warning("initial economic indicators fetch failed, will retry on schedule")
+        # Run initial data fetches in a background thread so the server
+        # starts accepting requests immediately instead of blocking on
+        # 12 sequential external API calls (~30-120s).
+        t = threading.Thread(target=_initial_data_fetch, args=(conn,), daemon=True)
+        t.start()
 
     # Mount frontend static files last (catch-all)
     frontend_dir = Path(__file__).parent.parent / "frontend"
